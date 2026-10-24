@@ -13,9 +13,10 @@ The product spec lives in [`doc/SPEC.md`](doc/SPEC.md).
 
 | Route | What it is |
 |---|---|
-| `/` | Landing page |
+| `/` | Landing page (public) |
 | `/oomi` | The **necklace simulator**: animated eyes (8 expressions), push-to-talk button (click, touch or Space), mic LED and mic kill switch, plus a demo console for the audience (typed questions, live captions, verdicts, latency) |
-| `/parent` | The **parent journal**: today's numbers, illustrated discovery cards with "Do it together" activities, questions to talk about together, illustrated bedtime stories (with narration), what Oomi remembers (deletable), safety, settings |
+| `/parent` | The **parent journal**: the day in one line, the week, illustrated discovery cards with "Do it together" activities, questions to talk about together, illustrated bedtime stories (with narration), what Oomi remembers (deletable), safety report, daily note, settings |
+| `/kids` | **Oomi TV**, for the family tablet: short motion-design explainers of the child's own discoveries and bedtime picture books. Every video ends with a real-world mission, nothing autoplays |
 | `/unlock` | Team access code (the app spends OpenAI credits, so it is not public) |
 
 ## Architecture
@@ -52,7 +53,7 @@ Distress signals ("I want to die", someone hurting the child) are never "decline
 
 ### Models
 
-All configurable through environment variables (see `.env.example`).
+All configurable through environment variables (see `.env.example`). Up to two backup OpenAI keys (`OPENAI_API_KEY_FALLBACK_1`, `_2`) take over automatically when a key is revoked, rate limited or out of credits.
 
 | Role | Model |
 |---|---|
@@ -61,13 +62,21 @@ All configurable through environment variables (see `.env.example`).
 | File transcription (fallback mode) | `gpt-transcribe` |
 | Safety classifier | `gpt-5.4-nano` |
 | Moderation | `omni-moderation-latest` |
-| Brain (cards, memory, stories, fallback replies) | `gpt-6-luna` |
+| Brain (cards, memory, stories, explainers, fallback replies) | `gpt-6-luna` |
 | Illustrations | `gpt-image-2` |
 | Narration | `gpt-4o-mini-tts` |
 
 ### Agentic memory
 
 After each turn, the Brain turns the exchange into structured facts: interests (with a weight), open challenges, things learned, preferences. They are injected into Oomi's instructions, so Oomi can follow up ("So, which plane flew farther?") and the bedtime story reuses the day. Parents see all of it in plain words and can delete any item. No audio and no full transcripts are stored.
+
+### English and French
+
+Oomi answers in the language the child speaks. The live transcription has no fixed language, the safety classifier also returns the language, and every spoken line (answers, fixed lines, stories, narration) follows it. The safety suite runs in both languages.
+
+### Oomi TV
+
+When the child (or a parent) opens a discovery on the tablet, the Brain scripts a 4-scene explainer (hook, big idea, "whoa" detail, back to the real world). Two scenes get new illustrations, every scene gets its own narration (TTS), and the player animates captions, stickers and pictures in the browser. Everything is generated once and stored.
 
 ### Fallback mode
 
@@ -93,6 +102,7 @@ Requirements: Node 24+, a Postgres database, an OpenAI API key.
 npm install
 cp .env.example .env      # fill in the keys
 npm run db:migrate        # creates the oomi_app schema and the demo child
+npm run db:seed           # optional: a rich demo week for Leo (illustrations, stories, Oomi TV videos)
 npm run dev               # http://localhost:3000
 ```
 
@@ -107,6 +117,7 @@ Open `/oomi`, enter the access code, tap the button to wake Oomi, then hold it (
 | `npm test` | Unit tests (safety rules) |
 | `npm run eval:safety` | Replays the SPEC §6.4 safety suite against the real gate (rules + moderation + classifier); must pass 100% |
 | `npm run db:migrate` | Applies `db/schema.sql` (idempotent) |
+| `npm run db:seed` | Seeds the demo week. Re-run before a demo: it only moves dates and removes test data, pictures and videos are generated once |
 
 ## Project structure
 
