@@ -53,3 +53,6 @@ logs/
 *.log
 coverage/
 tmp/
+
+# Supabase CLI local state
+supabase/.temp/
