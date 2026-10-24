@@ -1,0 +1,27 @@
+name: Watch app
+
+on:
+  pull_request:
+    paths:
+      - "watch/**"
+      - ".github/workflows/watch.yml"
+  push:
+    branches: [feat/parent-dashboard]
+    paths:
+      - "watch/**"
+      - ".github/workflows/watch.yml"
+
+jobs:
+  build-watch-app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the standalone Watch target
+        run: >-
+          xcodebuild
+          -project watch/OomiWatchApp/OomiWatch/OomiWatch.xcodeproj
+          -target "OomiWatch Watch App"
+          -sdk watchsimulator
+          -configuration Debug
+          CODE_SIGNING_ALLOWED=NO
+          build

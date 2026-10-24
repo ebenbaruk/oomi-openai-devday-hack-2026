@@ -39,11 +39,11 @@ async function authenticatedDevice(pairingCode: string) {
   return result.rows[0] ?? null;
 }
 
-async function transcribeAudio(audio: File, config: Config, signal: AbortSignal) {
+async function transcribeAudio(audio: File, language: Language, config: Config, signal: AbortSignal) {
   const form = new FormData();
   form.append("file", audio, audio.name || "watch-turn.m4a");
   form.append("model", config.OPENAI_FILE_TRANSCRIBE_MODEL);
-  form.append("languages[]", config.OOMI_LANGUAGE);
+  form.append("language", language);
   const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
     headers: { Authorization: `Bearer ${config.OPENAI_API_KEY}` },
@@ -74,6 +74,30 @@ function result(turnId: string, verdict: WatchTurnResponse["verdict"], text: str
     state: verdict === "answer" ? "happy" : verdict,
     text,
   });
+}
+
+async function synthesizeApprovedSpeech(text: string, language: Language, config: Config, signal: AbortSignal) {
+  const response = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: config.OPENAI_TTS_MODEL,
+      voice: config.OPENAI_TTS_VOICE,
+      input: text,
+      response_format: "mp3",
+      instructions: language === "fr" ? "Parle en français avec chaleur, lentement et clairement à un enfant." : "Speak warmly, slowly, and clearly to a child.",
+    }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`OpenAI speech: HTTP ${response.status}`);
+  const audio = new Uint8Array(await response.arrayBuffer());
+  if (audio.byteLength < 128 || audio.byteLength > 1_400_000) throw new Error("Invalid speech payload");
+  return Buffer.from(audio).toString("base64");
+}
+
+async function spokenResult(turnId: string, verdict: WatchTurnResponse["verdict"], text: string, language: Language, config: Config) {
+  const audioBase64 = await synthesizeApprovedSpeech(text, language, config, AbortSignal.timeout(15_000));
+  return watchTurnResponseSchema.parse({ ...result(turnId, verdict, text), audioBase64, audioMimeType: "audio/mpeg" });
 }
 
 // Only a category is retained. The original question stays out of the parent journal.
@@ -112,30 +136,30 @@ export async function handleWatchTurn(request: Request, config: Config): Promise
   await reserveSession(sessionId, { ...config, OOMI_CHILD_AGE: device.age, OOMI_LANGUAGE: language }, device.child_id);
   try {
     const signal = AbortSignal.timeout(35_000);
-    const question = await transcribeAudio(audio, config, signal);
+    const question = await transcribeAudio(audio, language, config, signal);
     const safety = createSafetyProviders(config);
     const decision = await screenInput(question, safety, signal);
     if (decision.kind === "ignored") {
       await recordAudit(sessionId, turnId, null, "ignored", Date.now() - started);
-      return result(turnId, "decline", fixedPhrases[language].fallback);
+      return await spokenResult(turnId, "decline", fixedPhrases[language].fallback, language, config);
     }
     if (decision.kind === "fallback") {
       await recordAudit(sessionId, turnId, null, "fallback", Date.now() - started);
-      return result(turnId, "decline", fixedPhrases[language].fallback);
+      return await spokenResult(turnId, "decline", fixedPhrases[language].fallback, language, config);
     }
     if (decision.verdict !== "answer") {
       await recordAudit(sessionId, turnId, decision.verdict, "blocked", Date.now() - started);
       await recordParentSignal({ turnAuditId: turnId, kind: parentSignal(question) });
-      return result(turnId, decision.verdict, fixedPhrases[language][decision.verdict]);
+      return await spokenResult(turnId, decision.verdict, fixedPhrases[language][decision.verdict], language, config);
     }
     const reply = await generateReply(question, language, config, signal);
     if (!await screenOutput(reply, safety, signal)) {
       await recordAudit(sessionId, turnId, "answer", "fallback", Date.now() - started);
-      return result(turnId, "decline", fixedPhrases[language].fallback);
+      return await spokenResult(turnId, "decline", fixedPhrases[language].fallback, language, config);
     }
     await recordAudit(sessionId, turnId, "answer", "approved", Date.now() - started);
     await recordParentSignal({ turnAuditId: turnId, kind: parentSignal(question) });
-    return result(turnId, "answer", reply);
+    return await spokenResult(turnId, "answer", reply, language, config);
   } catch {
     await recordAudit(sessionId, turnId, null, "fallback", Date.now() - started).catch(() => {});
     return result(turnId, "decline", fixedPhrases[language].fallback);

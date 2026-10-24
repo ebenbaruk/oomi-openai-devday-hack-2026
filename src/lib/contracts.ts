@@ -106,5 +106,7 @@ export const watchTurnResponseSchema = z.object({
   verdict: verdictSchema,
   state: z.enum(["happy", "grown_up", "decline", "fallback"]),
   text: z.string().min(1).max(800),
+  audioBase64: z.string().min(1).max(2_000_000).optional(),
+  audioMimeType: z.literal("audio/mpeg").optional(),
 }).strict();
 export type WatchTurnResponse = z.infer<typeof watchTurnResponseSchema>;

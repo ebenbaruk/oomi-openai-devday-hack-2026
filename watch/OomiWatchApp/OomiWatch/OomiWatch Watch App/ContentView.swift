@@ -11,6 +11,7 @@ struct OomiWatchHome: View {
     @State private var mood: OomiMood = .resting
     @State private var isHolding = false
     @State private var message = "Une grande découverte commence par une petite question."
+    @State private var captureTimeoutTask: Task<Void, Never>?
     @State private var showingSettings = false
     @AppStorage("oomiServerURL") private var serverURL = ""
     @AppStorage("oomiPairingCode") private var pairingCode = ""
@@ -89,6 +90,12 @@ struct OomiWatchHome: View {
             do {
                 try await recorder.start()
                 guard isHolding else { recorder.discard(); return }
+                captureTimeoutTask?.cancel()
+                captureTimeoutTask = Task {
+                    try? await Task.sleep(for: .seconds(10))
+                    guard !Task.isCancelled, isHolding else { return }
+                    stopTalking(timedOut: true)
+                }
             } catch {
                 isHolding = false
                 showProblem(error.localizedDescription)
@@ -96,16 +103,18 @@ struct OomiWatchHome: View {
         }
     }
 
-    private func stopTalking() {
+    private func stopTalking(timedOut: Bool = false) {
         guard isHolding else { return }
         isHolding = false
+        captureTimeoutTask?.cancel()
+        captureTimeoutTask = nil
         guard let audioURL = recorder.stop() else {
             mood = .resting
             message = "Maintenez le bouton quand vous êtes prêt."
             return
         }
         mood = .thinking
-        message = "Je prépare une réponse sûre."
+        message = timedOut ? "J'ai gardé les 10 premières secondes." : "Je prépare une réponse sûre."
         WKInterfaceDevice.current().play(.directionUp)
         Task {
             do {
@@ -127,7 +136,12 @@ struct OomiWatchHome: View {
         case "decline": .declined
         default: .problem
         }
-        feedback.speak(turn.text, french: true)
+        guard let encodedAudio = turn.audioBase64, let audio = Data(base64Encoded: encodedAudio) else {
+            showProblem("Je n'ai pas pu préparer ma voix. Réessaie dans un instant.")
+            return
+        }
+        do { try feedback.playOpenAIAudio(audio) }
+        catch { showProblem("Je n'arrive pas à lire ma réponse.") }
         WKInterfaceDevice.current().play(turn.verdict == "answer" ? .success : .notification)
     }
 
@@ -140,13 +154,15 @@ struct OomiWatchHome: View {
 
 @MainActor
 private final class WatchFeedback: ObservableObject {
-    private let synthesizer = AVSpeechSynthesizer()
-    func speak(_ text: String, french: Bool) {
-        synthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: french ? "fr-FR" : "en-US")
-        utterance.rate = 0.48
-        synthesizer.speak(utterance)
+    private var player: AVAudioPlayer?
+    func playOpenAIAudio(_ audio: Data) throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .default)
+        try session.setActive(true)
+        let player = try AVAudioPlayer(data: audio)
+        player.prepareToPlay()
+        player.play()
+        self.player = player
     }
 }
 

@@ -9,6 +9,8 @@ const schema = z.object({
   OPENAI_REALTIME_MODEL: z.string().default("gpt-realtime-2.1-mini"),
   OPENAI_TRANSCRIBE_MODEL: z.string().default("gpt-live-transcribe"),
   OPENAI_FILE_TRANSCRIBE_MODEL: z.string().default("gpt-transcribe"),
+  OPENAI_TTS_MODEL: z.string().default("gpt-4o-mini-tts"),
+  OPENAI_TTS_VOICE: z.string().default("coral"),
   OPENAI_DECISION_MODEL: z.string().default("gpt-6-luna"),
   OPENAI_BRAIN_MODEL: z.string().default("gpt-6.1-sol"),
   OPENAI_IMAGE_MODEL: z.string().default("gpt-image-2.5-flare"),
