@@ -1,9 +1,55 @@
-node_modules/
+# --- Local AI agent files (never commit) ---
+AGENTS.md
+.codex/
+.history/
+
+# --- Environment & secrets ---
 .env
-.env*.local
-.DS_Store
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Node / web ---
+node_modules/
 .next/
+out/
 dist/
-__pycache__/
-.venv/
+build/
+.turbo/
 .vercel
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Hardware / firmware ---
+.pio/
+.vscode/.browse.c_cpp.db*
+*.elf
+*.bin
+*.hex
+
+# --- Editors & OS ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Logs & misc ---
+logs/
+*.log
+coverage/
+tmp/
