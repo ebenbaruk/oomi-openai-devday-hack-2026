@@ -15,11 +15,11 @@ function voiceInstructions(style: VoiceStyle, language: Language): string {
   return language === "fr" ? `${VOICE_STYLE[style]} Speak natural French with a native French accent.` : VOICE_STYLE[style];
 }
 
-export async function synthesize(text: string, style: VoiceStyle, language: Language = "en"): Promise<Response> {
+export async function synthesize(text: string, style: VoiceStyle, language: Language = "en", voice = "coral"): Promise<Response> {
   return openai((client) =>
     client.audio.speech.create({
       model: env().OOMI_MODEL_TTS,
-      voice: "coral",
+      voice,
       input: text,
       instructions: voiceInstructions(style, language),
       response_format: "mp3",
@@ -28,8 +28,8 @@ export async function synthesize(text: string, style: VoiceStyle, language: Lang
 }
 
 /** Synthesizes once and keeps the mp3, for narration that is replayed (Oomi TV, stories). */
-export async function synthesizeToMedia(text: string, style: VoiceStyle, language: Language): Promise<string> {
-  const audio = await synthesize(text, style, language);
+export async function synthesizeToMedia(text: string, style: VoiceStyle, language: Language, voice?: string): Promise<string> {
+  const audio = await synthesize(text, style, language, voice);
   return storeMedia("audio/mpeg", Buffer.from(await audio.arrayBuffer()));
 }
 

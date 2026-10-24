@@ -6,6 +6,7 @@ import { loadChild, type ChildContext } from "./child";
 import { CHILD_ID, query } from "./db";
 import { env } from "./env";
 import { illustrate } from "./images";
+import { describeMascot } from "./persona";
 import { openai } from "./openai";
 
 const LANGUAGE_NAME: Record<Language, string> = { en: "English", fr: "French" };
@@ -93,7 +94,7 @@ Never invent facts about the family. Keep everything positive, simple and safe.`
   if (card.memory.fact) await upsertMemory("fact", card.memory.fact);
   if (card.memory.preference) await upsertMemory("preference", card.memory.preference);
 
-  const imageId = await illustrate(card.illustration);
+  const imageId = await illustrate(card.illustration, "low", describeMascot(child.mascot));
   await query(`UPDATE oomi_app.discovery SET image_id = $2 WHERE id = $1`, [input.discoveryId, imageId]);
 }
 
@@ -114,11 +115,11 @@ export type StoryDraft = z.infer<typeof StoryOutput>;
 
 const STORY_CRAFT = `How to write it:
 - Exactly 3 short pages, about 150 words in total (one calm minute read aloud).
-- Page 1: a cozy evening, the hero and Oomi (a tiny coral explorer with big cream eyes) notice something linked to today's discovery.
+- Page 1: a cozy evening, the hero and their explorer companion notice something linked to today's discovery.
 - Page 2: a small, gentle, magical adventure where the hero uses what they really learned today (keep the science correct).
 - Page 3: they come home, everything slows down, a soft repeated line, and the hero falls asleep. A real ending.
 - Concrete, sensory, funny little details a child loves. Short sentences, a few sound words. Never scary, no villains.
-- Never suggest another story, never say Oomi loves the child.`;
+- Never suggest another story, never say the companion loves the child.`;
 
 type TodayDiscovery = { question: string; topic: string | null; summary: string | null };
 
@@ -136,7 +137,7 @@ export async function writeStory(child: ChildContext, language: Language): Promi
     client.responses.parse({
       model: env().OOMI_MODEL_BRAIN,
       reasoning: { effort: "low" },
-      instructions: `You write bedtime stories for ${child.firstName}, ${child.age}, read aloud by Oomi. ${child.firstName} is the hero.
+      instructions: `You write bedtime stories for ${child.firstName}, ${child.age}, read aloud by their companion ${describeMascot(child.mascot)}. ${child.firstName} is the hero, the companion is the sidekick.
 Write in ${LANGUAGE_NAME[language]}. Build the story around ONE of today's discoveries (the most fun one).
 ${STORY_CRAFT}`,
       input: `Today's discoveries:\n${discoveries || "- none yet: a cozy adventure about looking at the stars"}\nInterests: ${interests.join(", ") || "exploring"}`,
@@ -148,10 +149,10 @@ ${STORY_CRAFT}`,
   return story;
 }
 
-export async function illustrateStory(storyId: string, pages: { text: string; scene: string }[]) {
+export async function illustrateStory(storyId: string, pages: { text: string; scene: string }[], companion?: string) {
   const imageIds = await Promise.all(
     pages.map((page) =>
-      illustrate(page.scene).catch((error: unknown) => {
+      illustrate(page.scene, "low", companion).catch((error: unknown) => {
         console.error("[story] illustration failed:", error);
         return undefined;
       }),
@@ -189,13 +190,14 @@ export async function writeExplainer(input: {
   childName: string;
   age: number;
   language: Language;
+  companion: string;
 }): Promise<ExplainerDraft> {
   const response = await openai((client) =>
     client.responses.parse({
       model: env().OOMI_MODEL_BRAIN,
       reasoning: { effort: "low" },
       instructions: `You script short motion-design explainer videos for Oomi TV, for ${input.childName}, ${input.age}.
-Write in ${LANGUAGE_NAME[input.language]}. Oomi (a tiny coral explorer) narrates, warm and playful, speaking to ${input.childName}.
+Write in ${LANGUAGE_NAME[input.language]}. The narrator is ${input.companion}, warm and playful, speaking to ${input.childName}.
 Exactly 4 scenes, about 45 seconds in total:
 1. Hook: replay the child's own question with wonder.
 2. The big idea, with a comparison to something a child knows.

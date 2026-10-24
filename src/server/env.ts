@@ -18,7 +18,6 @@ const Env = z.object({
   OOMI_MODEL_IMAGE: z.string().default("gpt-image-2"),
   OOMI_MODEL_TTS: z.string().default("gpt-4o-mini-tts"),
   OOMI_MODEL_MODERATION: z.string().default("omni-moderation-latest"),
-  OOMI_VOICE: z.string().default("marin"),
 });
 
 type Config = z.infer<typeof Env> & { openaiKeys: string[] };

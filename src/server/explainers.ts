@@ -5,6 +5,7 @@ import { loadChild } from "./child";
 import { CHILD_ID, query, queryOne } from "./db";
 import { illustrate, imageUrl } from "./images";
 import { mediaUrl } from "./media";
+import { describeMascot } from "./persona";
 import { synthesizeToMedia } from "./speech";
 
 /** Scene as stored: ids, turned into URLs when served. */
@@ -106,13 +107,14 @@ export async function generateExplainer(explainerId: string): Promise<void> {
       childName: child.firstName,
       age: child.age,
       language: source.language,
+      companion: describeMascot(child.mascot),
     });
     const colors = sceneColors(source.topic, script.scenes.length);
     const scenes = await Promise.all(
       script.scenes.map(async (scene, index): Promise<StoredScene> => {
         const [imageId, audioId] = await Promise.all([
-          scene.picture ? illustrate(scene.picture) : Promise.resolve(source.image_id),
-          synthesizeToMedia(scene.narration, "explainer", source.language),
+          scene.picture ? illustrate(scene.picture, "low", describeMascot(child.mascot)) : Promise.resolve(source.image_id),
+          synthesizeToMedia(scene.narration, "explainer", source.language, child.mascot.voice),
         ]);
         return { caption: scene.caption, narration: scene.narration, imageId, emojis: scene.emojis.slice(0, 3), color: colors[index], audioId };
       }),

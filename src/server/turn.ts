@@ -5,6 +5,7 @@ import { CHILD_ID, query, queryOne } from "./db";
 import { env } from "./env";
 import { openai } from "./openai";
 import { answerInstructions, exactTextInstructions, languageInstruction, lines, sessionInstructions } from "./persona";
+import { loadMascot } from "./mascot";
 import { gate, moderate } from "./safety/gate";
 
 type SessionState = { child: ChildContext } | { sleep: string; reason: string };
@@ -12,7 +13,7 @@ type SessionState = { child: ChildContext } | { sleep: string; reason: string };
 /** Allowed hours and max session length, both set by the parent (SPEC §4, #9). */
 async function checkSession(sessionId?: string): Promise<SessionState> {
   const child = await loadChild();
-  const say = lines(child.language);
+  const say = lines(child.language, child.mascot.name);
   if (!isWithinAllowedHours(child.settings)) return { sleep: say.sleep, reason: "outside_allowed_hours" };
   if (sessionId) {
     const session = await queryOne<{ minutes: number }>(
@@ -55,7 +56,7 @@ export async function startSession(): Promise<SessionResponse> {
           // No fixed language: the child may ask in English or French, Oomi answers in the same one.
           transcription: { model: config.OOMI_MODEL_TRANSCRIBE, keywords: ["Oomi"] },
         },
-        output: { voice: config.OOMI_VOICE },
+        output: { voice: child.mascot.voice },
       },
     },
   }));
@@ -65,9 +66,10 @@ export async function startSession(): Promise<SessionResponse> {
     sessionId: session.id,
     clientSecret: secret.value,
     model: config.OOMI_MODEL_REALTIME,
-    voice: config.OOMI_VOICE,
+    voice: child.mascot.voice,
     childName: child.firstName,
     language: child.language,
+    mascot: await loadMascot(),
   };
 }
 
@@ -96,7 +98,7 @@ export async function decideTurn(sessionId: string, transcript: string, audioSec
 
   if (decision.kind === "ignore") return { action: "ignore", face: "idle", reason: decision.reason };
   const { language } = decision;
-  const say = lines(language);
+  const say = lines(language, child.mascot.name);
 
   const speakExactly = (turnId: string, text: string, face: Face, endFace: Face): GateResponse => ({
     action: "speak",
@@ -170,7 +172,7 @@ export async function checkAnswer(answer: string, language: Language): Promise<C
     console.error("[turn] output moderation failed:", error);
     return { safe: true };
   }
-  return { safe: false, replacement: lines(language).fallback };
+  return { safe: false, replacement: lines(language, (await loadChild()).mascot.name).fallback };
 }
 
 export type TrackedTurn = {

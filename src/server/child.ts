@@ -1,6 +1,7 @@
 import "server-only";
-import type { MemoryItem, SettingsInput } from "@/lib/contracts";
+import type { MascotConfig, MemoryItem, SettingsInput } from "@/lib/contracts";
 import { CHILD_ID, query, queryOne } from "./db";
+import { parseMascot } from "./mascot";
 
 export type ChildContext = {
   firstName: string;
@@ -8,6 +9,8 @@ export type ChildContext = {
   language: "en" | "fr";
   settings: SettingsInput & { timezone: string };
   memory: MemoryItem[];
+  /** The family's mascot: its name, voice and personality shape how Oomi talks. */
+  mascot: MascotConfig;
 };
 
 type ChildRow = {
@@ -20,6 +23,7 @@ type ChildRow = {
   story_enabled: boolean;
   videos_enabled: boolean;
   timezone: string;
+  mascot: unknown;
 };
 
 type MemoryRow = {
@@ -53,7 +57,7 @@ export async function loadChild(): Promise<ChildContext> {
       `SELECT c.first_name, c.age, c.language, s.max_session_minutes,
               to_char(s.allowed_start, 'HH24:MI') AS allowed_start,
               to_char(s.allowed_end, 'HH24:MI') AS allowed_end,
-              s.story_enabled, s.videos_enabled, s.timezone
+              s.story_enabled, s.videos_enabled, s.timezone, s.mascot
        FROM oomi_app.child c JOIN oomi_app.settings s ON s.child_id = c.id WHERE c.id = $1`,
       [CHILD_ID],
     ),
@@ -76,6 +80,7 @@ export async function loadChild(): Promise<ChildContext> {
       timezone: row.timezone,
     },
     memory,
+    mascot: parseMascot(row.mascot),
   };
 }
 

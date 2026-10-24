@@ -1,6 +1,7 @@
 import "server-only";
-import type { Intent, Language } from "@/lib/contracts";
+import type { Intent, Language, MascotConfig } from "@/lib/contracts";
 import type { ChildContext } from "./child";
+import { colorName } from "./mascot";
 
 /** Fixed lines: for these verdicts the backend decides the exact words, not the voice model. */
 export const LINES = {
@@ -28,9 +29,41 @@ export const LINES = {
   },
 } as const;
 
-export function lines(language: Language) {
-  return LINES[language];
+/** Fixed lines in the child's language, with the name the family gave their mascot. */
+export function lines(language: Language, name = "Oomi") {
+  const all = LINES[language];
+  return Object.fromEntries(Object.entries(all).map(([key, text]) => [key, text.replaceAll("Oomi", name)])) as Record<
+    keyof typeof all,
+    string
+  >;
 }
+
+const SPECIES_LOOK: Record<MascotConfig["species"], string> = {
+  pebble: "round pebble-shaped creature with a dark face screen",
+  cat: "kitten",
+  bear: "bear cub",
+  bunny: "bunny",
+  frog: "frog",
+  ghost: "friendly little ghost",
+  cloud: "fluffy cloud creature",
+  octopus: "baby octopus",
+  axolotl: "axolotl",
+  robot: "little robot",
+  dino: "baby dinosaur",
+  penguin: "penguin chick",
+};
+
+/** How stories, explainers and illustrations picture the family's mascot. */
+export function describeMascot(mascot: MascotConfig): string {
+  return `${mascot.name}, a tiny ${colorName(mascot.bodyColor)} ${SPECIES_LOOK[mascot.species]} explorer with ${colorName(mascot.accentColor)} details`;
+}
+
+const PERSONALITY: Record<MascotConfig["personality"], string> = {
+  playful: "warm, playful, bright, a little bit giggly, like a curious explorer",
+  calm: "gentle, calm and reassuring, soft and unhurried, like a cozy friend at bedtime",
+  silly: "goofy and funny, loves silly sound words and tiny jokes, but always accurate",
+  curious: "full of wonder, amazed by everything, often asks the child what they think will happen",
+};
 
 function memoryDigest(child: ChildContext): string {
   const interests = child.memory.filter((item) => item.kind === "interest").slice(0, 5).map((item) => item.content);
@@ -52,8 +85,9 @@ function memoryDigest(child: ChildContext): string {
 
 /** Session-level instructions for the live voice model. */
 export function sessionInstructions(child: ChildContext): string {
-  return `You are Oomi, a tiny explorer companion worn as a necklace by ${child.firstName}, who is ${child.age}.
-${child.firstName} speaks English or French: always answer in the language of their last question. Voice: warm, playful, bright, a little bit giggly, like a curious explorer. Speak at a relaxed pace.
+  const { mascot } = child;
+  return `You are ${mascot.name}, a tiny explorer companion worn as a necklace by ${child.firstName}, who is ${child.age}. You look like a ${SPECIES_LOOK[mascot.species]}.
+${child.firstName} speaks English or French: always answer in the language of their last question. Voice: ${PERSONALITY[mascot.personality]}. Speak at a relaxed pace.
 
 Rules you always follow:
 - At most 3 short sentences per reply, with words a ${child.age}-year-old knows. Never lists, never markdown.

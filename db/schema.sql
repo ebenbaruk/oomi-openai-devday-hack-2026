@@ -120,3 +120,14 @@ CREATE TABLE IF NOT EXISTS oomi_app.explainer (
 -- Demo content is upserted by key, so re-seeding before a demo only refreshes dates (no new images).
 ALTER TABLE oomi_app.discovery ADD COLUMN IF NOT EXISTS seed_key text UNIQUE;
 ALTER TABLE oomi_app.story ADD COLUMN IF NOT EXISTS seed_key text UNIQUE;
+
+-- v3: the family's own mascot (look, name, voice, personality) and its generated portraits.
+ALTER TABLE oomi_app.settings ADD COLUMN IF NOT EXISTS mascot jsonb;
+CREATE TABLE IF NOT EXISTS oomi_app.mascot_portrait (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  child_id uuid NOT NULL REFERENCES oomi_app.child(id) ON DELETE CASCADE,
+  image_id uuid NOT NULL,
+  species text NOT NULL,
+  config jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

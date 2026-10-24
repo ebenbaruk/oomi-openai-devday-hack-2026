@@ -83,11 +83,78 @@ export type SessionResponse =
       voice: string;
       childName: string;
       language: Language;
+      mascot: MascotState;
     };
 
 export const StoryRequest = z.object({ language: Language.optional() });
 export type StoryPage = { text: string; imageId?: string };
 export type StoryResponse = { id: string; title: string; text: string };
+
+// ---------- Mascot studio (parent settings) ----------
+
+/** Characters the family can pick for Oomi. Each one is drawn in code and can also be painted by GPT Image. */
+export const MASCOT_SPECIES = [
+  "pebble",
+  "cat",
+  "bear",
+  "bunny",
+  "frog",
+  "ghost",
+  "cloud",
+  "octopus",
+  "axolotl",
+  "robot",
+  "dino",
+  "penguin",
+] as const;
+export const MASCOT_EYES = ["round", "dots", "ovals", "sleepy", "sparkle"] as const;
+export const MASCOT_MOUTHS = ["none", "smile", "open", "cat"] as const;
+export const MASCOT_ACCESSORIES = ["none", "scarf", "cap", "bow", "headphones", "leaf", "crown", "glasses"] as const;
+export const MASCOT_PERSONALITIES = ["playful", "calm", "silly", "curious"] as const;
+/** Voices available both for the live session and for TTS narration. */
+export const MASCOT_VOICES = ["marin", "cedar", "coral", "sage", "shimmer", "ballad", "verse", "alloy", "ash", "echo"] as const;
+
+const HexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+export const MascotConfig = z.object({
+  name: z.string().trim().min(1).max(20),
+  species: z.enum(MASCOT_SPECIES),
+  bodyColor: HexColor,
+  accentColor: HexColor,
+  backgroundColor: HexColor,
+  eyes: z.enum(MASCOT_EYES),
+  mouth: z.enum(MASCOT_MOUTHS),
+  cheeks: z.boolean(),
+  accessory: z.enum(MASCOT_ACCESSORIES),
+  corner: z.enum(["left", "right"]),
+  personality: z.enum(MASCOT_PERSONALITIES),
+  voice: z.enum(MASCOT_VOICES),
+  /** Generated portrait chosen as the avatar, if any (image id from the gallery). */
+  portraitId: z.uuid().nullable(),
+});
+export type MascotConfig = z.infer<typeof MascotConfig>;
+
+export const DEFAULT_MASCOT: MascotConfig = {
+  name: "Oomi",
+  species: "pebble",
+  bodyColor: "#f26a4b",
+  accentColor: "#8fdcbb",
+  backgroundColor: "#1b1f3b",
+  eyes: "round",
+  mouth: "none",
+  cheeks: false,
+  accessory: "none",
+  corner: "right",
+  personality: "playful",
+  voice: "marin",
+  portraitId: null,
+};
+
+export type MascotPortrait = { id: string; imageUrl: string; species: string; createdAt: string };
+
+export type MascotState = { config: MascotConfig; portraitUrl: string | null; portraits: MascotPortrait[] };
+
+export const PortraitRequest = z.object({ config: MascotConfig });
 
 // ---------- Parent app ----------
 
@@ -148,6 +215,7 @@ export type WeekDay = { date: string; questions: number; emojis: string[] };
 
 export type Journal = {
   child: { firstName: string; age: number; language: Language };
+  mascot: MascotState;
   settings: SettingsInput;
   today: { questions: number; activities: number; topics: number };
   /** A one-line summary of the day, written for the parent. */
@@ -205,6 +273,7 @@ export type KidVideo = {
 
 export type KidLibrary = {
   child: { firstName: string; language: Language };
+  mascot: MascotState;
   videosEnabled: boolean;
   videos: KidVideo[];
   stories: StoryCard[];

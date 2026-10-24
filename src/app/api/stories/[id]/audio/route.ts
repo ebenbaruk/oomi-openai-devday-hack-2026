@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { z } from "zod";
 import type { Language, StoryPage } from "@/lib/contracts";
+import { loadChild } from "@/server/child";
 import { CHILD_ID, query, queryOne } from "@/server/db";
 import { handle } from "@/server/http";
 import { loadMedia, storeMedia } from "@/server/media";
@@ -30,7 +31,7 @@ export function GET(_request: Request, { params }: RouteContext<"/api/stories/[i
     }
 
     const text = `${story.title}. ${story.pages.map((page) => page.text).join("\n\n")}`;
-    const audio = await synthesize(text, "bedtime", story.language);
+    const audio = await synthesize(text, "bedtime", story.language, (await loadChild()).mascot.voice);
     if (!audio.body) throw new Error("TTS returned no audio");
     const [toClient, toStore] = audio.body.tee();
     after(async () => {

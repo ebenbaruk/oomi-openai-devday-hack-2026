@@ -16,6 +16,8 @@ import { illustrateStory, writeStory } from "./brain";
 import { loadChild, type ChildContext } from "./child";
 import { CHILD_ID, query, queryOne } from "./db";
 import { imageUrl } from "./images";
+import { loadMascot } from "./mascot";
+import { describeMascot } from "./persona";
 
 type DiscoveryRow = {
   id: string;
@@ -102,7 +104,8 @@ function writeDigest(child: ChildContext, todayCards: DiscoveryCard[], grownUpTo
 export async function buildJournal(): Promise<Journal> {
   const child = await loadChild();
   const timezone = child.settings.timezone;
-  const [discoveries, stories, alerts, counts, week, weekTotals] = await Promise.all([
+  const [mascot, discoveries, stories, alerts, counts, week, weekTotals] = await Promise.all([
+    loadMascot(),
     query<DiscoveryRow>(
       `${SELECT_DISCOVERY} WHERE d.child_id = $1 AND d.verdict IN ('answer', 'grown_up') ORDER BY d.created_at DESC LIMIT 60`,
       [CHILD_ID],
@@ -147,6 +150,7 @@ export async function buildJournal(): Promise<Journal> {
   const { settings } = child;
   return {
     child: { firstName: child.firstName, age: child.age, language: child.language },
+    mascot,
     settings: {
       firstName: settings.firstName,
       age: settings.age,
@@ -180,7 +184,8 @@ function isSameLocalDay(iso: string, day: string | undefined, timezone: string):
 /** What the kid tablet shows: their own discoveries as videos, and their bedtime stories. */
 export async function buildKidLibrary(): Promise<KidLibrary> {
   const child = await loadChild();
-  const [rows, stories] = await Promise.all([
+  const [mascot, rows, stories] = await Promise.all([
+    loadMascot(),
     query<DiscoveryRow>(
       `${SELECT_DISCOVERY} WHERE d.child_id = $1 AND d.verdict = 'answer' AND d.intent = 'question' AND d.status = 'ready'
        ORDER BY d.created_at DESC LIMIT 24`,
@@ -190,6 +195,7 @@ export async function buildKidLibrary(): Promise<KidLibrary> {
   ]);
   return {
     child: { firstName: child.firstName, language: child.language },
+    mascot,
     videosEnabled: child.settings.videosEnabled,
     videos: rows.map((row) => {
       const card = toCard(row);
@@ -228,7 +234,7 @@ export async function createStory(language?: Language): Promise<{ story: StoryRe
   if (!row) throw new Error("Failed to save story");
   return {
     story: { id: row.id, title: story.title, text: story.pages.map((page) => page.text).join("\n\n") },
-    illustrate: () => illustrateStory(row.id, story.pages),
+    illustrate: () => illustrateStory(row.id, story.pages, describeMascot(child.mascot)),
   };
 }
 

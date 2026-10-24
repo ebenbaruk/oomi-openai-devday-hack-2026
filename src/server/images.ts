@@ -4,15 +4,17 @@ import { env } from "./env";
 import { openai } from "./openai";
 
 // One consistent, warm picture-book look across discovery cards and bedtime stories.
-const STYLE = `Soft children's picture-book illustration, rounded shapes, warm peach, coral, mint and navy palette,
-gentle grain, cozy and joyful, simple composition, no text, no letters, no words.
-If a small explorer companion appears, it is a round coral pebble-shaped creature with a navy face screen and two big cream eyes.`;
+const STYLE = `Soft children's picture-book illustration, rounded shapes, warm and bright palette,
+gentle grain, cozy and joyful, simple composition, no text, no letters, no words.`;
 
-export async function illustrate(scene: string, quality: "low" | "medium" = "low"): Promise<string> {
+const DEFAULT_COMPANION = "a round coral pebble-shaped creature with a navy face screen and two big cream eyes";
+
+/** `companion` describes the family's mascot, so it looks the same in every picture. */
+export async function illustrate(scene: string, quality: "low" | "medium" = "low", companion = DEFAULT_COMPANION): Promise<string> {
   const result = await openai((client) =>
     client.images.generate({
       model: env().OOMI_MODEL_IMAGE,
-      prompt: `${STYLE}\n\nScene: ${scene}`,
+      prompt: `${STYLE}\nIf a small explorer companion appears, it is ${companion}.\n\nScene: ${scene}`,
       size: "1024x1024",
       quality,
       output_format: "webp",
