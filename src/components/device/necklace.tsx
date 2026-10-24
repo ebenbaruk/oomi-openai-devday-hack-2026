@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties } from "react";
-import type { Face } from "@/lib/contracts";
+import { mix } from "@/components/mascot/colors";
+import type { Face, MascotConfig } from "@/lib/contracts";
 import { OomiEyes } from "./oomi-eyes";
 
 type Props = {
@@ -14,7 +15,57 @@ type Props = {
   onPress: () => void;
   onRelease: () => void;
   onToggleMic: () => void;
+  /** The family's mascot colors and eyes; without it the necklace keeps its classic coral and mint. */
+  look?: Pick<MascotConfig, "bodyColor" | "accentColor" | "eyes"> | null;
 };
+
+/** Every tone of the shell, derived from one body color. */
+type Shell = {
+  light: string;
+  mid: string;
+  base: string;
+  deep: string;
+  bail: string;
+  bailHole: string;
+  recess: string;
+  rim: string;
+  text: string;
+  textGlow: string;
+  sideSwitch: string;
+};
+
+// The hand-tuned tones of the product render.
+const CORAL_SHELL: Shell = {
+  light: "#ffb59a",
+  mid: "#f78d6e",
+  base: "#e9724f",
+  deep: "#d75f3e",
+  bail: "#ee7d5d",
+  bailHole: "#b84b30",
+  recess: "#d8603f",
+  rim: "#b9472b",
+  text: "#cf5c3c",
+  textGlow: "#ffb59a",
+  sideSwitch: "#d9643f",
+};
+
+function shellFor(body: string): Shell {
+  const lighter = (amount: number) => mix(body, "#ffffff", amount);
+  const darker = (amount: number) => mix(body, "#000000", amount);
+  return {
+    light: lighter(0.42),
+    mid: lighter(0.12),
+    base: body,
+    deep: darker(0.1),
+    bail: lighter(0.06),
+    bailHole: darker(0.3),
+    recess: darker(0.08),
+    rim: darker(0.3),
+    text: darker(0.14),
+    textGlow: lighter(0.42),
+    sideSwitch: darker(0.06),
+  };
+}
 
 // Everything is laid out on a 600×560 canvas so the SVG body and the HTML parts (screen, button, LED)
 // stay aligned at any size.
@@ -50,15 +101,15 @@ function Rope({ d }: { d: string }) {
   );
 }
 
-function Body() {
+function Body({ shell }: { shell: Shell }) {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
       <defs>
         <radialGradient id="pebble-fill" cx="36%" cy="28%" r="78%">
-          <stop offset="0%" stopColor="#ffb59a" />
-          <stop offset="45%" stopColor="#f78d6e" />
-          <stop offset="82%" stopColor="#e9724f" />
-          <stop offset="100%" stopColor="#d75f3e" />
+          <stop offset="0%" stopColor={shell.light} />
+          <stop offset="45%" stopColor={shell.mid} />
+          <stop offset="82%" stopColor={shell.base} />
+          <stop offset="100%" stopColor={shell.deep} />
         </radialGradient>
         <linearGradient id="clasp-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#bde8d5" />
@@ -83,17 +134,17 @@ function Body() {
       </g>
 
       {/* Bail with the cord threaded through */}
-      <rect x={196} y={94} width={68} height={84} rx={30} fill="#ee7d5d" />
-      <rect x={212} y={108} width={36} height={26} rx={13} fill="#b84b30" />
+      <rect x={196} y={94} width={68} height={84} rx={30} fill={shell.bail} />
+      <rect x={212} y={108} width={36} height={26} rx={13} fill={shell.bailHole} />
 
       {/* Shell */}
       <path d={PEBBLE} fill="url(#pebble-fill)" />
       <g clipPath="url(#pebble-clip)">
-        <path d={PEBBLE} fill="none" stroke="#b9472b" strokeOpacity={0.35} strokeWidth={26} filter="url(#soft-blur)" transform="translate(10 16)" />
+        <path d={PEBBLE} fill="none" stroke={shell.rim} strokeOpacity={0.35} strokeWidth={26} filter="url(#soft-blur)" transform="translate(10 16)" />
         <ellipse cx={160} cy={230} rx={44} ry={70} fill="#ffffff" opacity={0.22} filter="url(#soft-blur)" />
         {/* Recesses for the screen and the button */}
-        <circle cx={228} cy={282} r={99} fill="#d8603f" opacity={0.55} />
-        <circle cx={222} cy={422} r={46} fill="#d8603f" opacity={0.5} />
+        <circle cx={228} cy={282} r={99} fill={shell.recess} opacity={0.55} />
+        <circle cx={222} cy={422} r={46} fill={shell.recess} opacity={0.5} />
       </g>
       <text
         x={230}
@@ -103,9 +154,9 @@ function Body() {
         fontWeight={600}
         fontSize={23}
         letterSpacing={3}
-        fill="#cf5c3c"
+        fill={shell.text}
         style={{ paintOrder: "stroke" }}
-        stroke="#ffb59a"
+        stroke={shell.textGlow}
         strokeOpacity={0.5}
         strokeWidth={1}
       >
@@ -116,15 +167,17 @@ function Body() {
 }
 
 /** The necklace, drawn like the product render: coral pebble, round navy screen, big mint button. */
-export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, onRelease, onToggleMic }: Props) {
+export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, onRelease, onToggleMic, look }: Props) {
   const still = face === "listening";
+  const shell = look ? shellFor(look.bodyColor) : CORAL_SHELL;
+  const accent = look?.accentColor;
   return (
     <div className="relative aspect-[600/560] w-full select-none">
       {/* Floor shadow breathes with the float */}
       <motion.div
         aria-hidden
         className="absolute rounded-[50%] bg-coral-700/25 blur-xl"
-        style={at(232, 548, 270, 26)}
+        style={{ ...at(232, 548, 270, 26), ...(look ? { background: `${shell.rim}40` } : {}) }}
         animate={still ? { scale: 1, opacity: 0.9 } : { scale: [1, 0.86, 1], opacity: [0.9, 0.6, 0.9] }}
         transition={still ? { duration: 0.2 } : { duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -141,7 +194,7 @@ export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, o
           animate={pressed ? { scaleY: 0.975, scaleX: 1.015 } : { scaleY: 1, scaleX: 1 }}
           transition={{ type: "spring", stiffness: 600, damping: 18 }}
         >
-          <Body />
+          <Body shell={shell} />
 
           {/* Screen */}
           <div
@@ -149,7 +202,7 @@ export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, o
             style={at(228, 282, 186)}
           >
             <div className="h-full w-full overflow-hidden rounded-full">
-              <OomiEyes face={face} level={level} />
+              <OomiEyes face={face} level={level} eyeStyle={look?.eyes} />
             </div>
           </div>
 
@@ -159,7 +212,7 @@ export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, o
               <motion.span
                 aria-hidden
                 className="pointer-events-none absolute rounded-full border-[6px] border-mint-300"
-                style={at(222, 420, 96)}
+                style={{ ...at(222, 420, 96), borderColor: accent }}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: [0.9, 0.2, 0.9], scale: [1, 1.22, 1] }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -171,7 +224,7 @@ export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, o
           {/* Push-to-talk button */}
           <button
             type="button"
-            aria-label="Hold to talk to Oomi"
+            aria-label="Hold to talk"
             aria-pressed={pressed}
             onPointerDown={(event) => {
               event.currentTarget.setPointerCapture(event.pointerId);
@@ -183,11 +236,16 @@ export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, o
             className="group absolute cursor-pointer touch-none rounded-full outline-offset-8"
             style={at(222, 420, 78)}
           >
-            <span className="absolute inset-0 translate-y-[7%] rounded-full bg-mint-600" />
+            <span className="absolute inset-0 translate-y-[7%] rounded-full bg-mint-600" style={accent ? { background: mix(accent, "#000000", 0.32) } : undefined} />
             <span
               className={`absolute inset-0 rounded-full bg-gradient-to-br from-mint-200 via-mint-300 to-mint-400 shadow-[inset_0_-6px_10px_rgb(36_140_100/0.35),inset_0_6px_8px_rgb(255_255_255/0.65)] transition-transform duration-100 ${
                 pressed ? "translate-y-[7%] scale-[0.96]" : "group-hover:-translate-y-[2%]"
               }`}
+              style={
+                accent
+                  ? { background: `linear-gradient(135deg, ${mix(accent, "#ffffff", 0.4)}, ${accent} 55%, ${mix(accent, "#000000", 0.1)})` }
+                  : undefined
+              }
             />
           </button>
 
@@ -209,8 +267,8 @@ export function Necklace({ face, micOpen, pressed, micEnabled, level, onPress, o
             onClick={onToggleMic}
             aria-label={micEnabled ? "Turn microphone off" : "Turn microphone on"}
             aria-pressed={!micEnabled}
-            className="absolute flex cursor-pointer justify-center rounded-full bg-[#d9643f] p-[0.35%] shadow-[inset_-2px_0_4px_rgb(0_0_0/0.25)]"
-            style={at(384, 318, 15, 56)}
+            className="absolute flex cursor-pointer justify-center rounded-full p-[0.35%] shadow-[inset_-2px_0_4px_rgb(0_0_0/0.25)]"
+            style={{ ...at(384, 318, 15, 56), background: shell.sideSwitch }}
           >
             <span
               className={`block h-[45%] w-full rounded-full transition-transform duration-200 ${

@@ -1,6 +1,9 @@
 "use client";
 
 import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { paletteOf } from "@/components/mascot/colors";
+import { MascotArt } from "@/components/mascot/mascot-art";
+import { SPECIES } from "@/components/mascot/species";
 import { SettingsInput, type Journal } from "@/lib/contracts";
 import { AlertIcon, MailIcon, MoonIcon, ShieldIcon, TvIcon } from "./icons";
 import { ConfirmAction, OomiPebble, SectionHeader, Switch, TimeLabel } from "./ui";
@@ -12,14 +15,17 @@ export function SettingsView({
   journal,
   onSaved,
   onEraseAll,
+  onOpenStudio,
 }: {
   journal: Journal;
   onSaved: () => Promise<void>;
   onEraseAll: () => Promise<void>;
+  onOpenStudio: () => void;
 }) {
   return (
     <div className="space-y-8">
       <SectionHeader kicker="Settings" title="Oomi, your way" subtitle="Simple rules, a calm safety report, and full control." />
+      <MascotCard journal={journal} onOpen={onOpenStudio} />
       {/* On a phone the safety report comes before the erase card; on a laptop they sit side by side. */}
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
         <SettingsForm initial={journal.settings} onSaved={onSaved} />
@@ -30,6 +36,62 @@ export function SettingsView({
         <EraseCard onEraseAll={onEraseAll} />
       </div>
     </div>
+  );
+}
+
+// ---------- Mascot ----------
+
+const PERSONALITY_LABEL = { playful: "Playful", calm: "Calm", silly: "Silly", curious: "Curious" } as const;
+
+/** The entry to the mascot studio: the child's companion, live, with what makes it theirs. */
+function MascotCard({ journal, onOpen }: { journal: Journal; onOpen: () => void }) {
+  const { config, portraitUrl } = journal.mascot;
+  const palette = paletteOf(config);
+  const facts = [SPECIES[config.species].label, palette?.name ?? "Custom colors", PERSONALITY_LABEL[config.personality], `Voice: ${config.voice}`];
+  return (
+    <section
+      aria-labelledby="mascot-card-title"
+      className="relative overflow-hidden rounded-[2rem] p-5 shadow-card sm:p-6"
+      style={{ background: `linear-gradient(120deg, ${config.backgroundColor}, ${config.backgroundColor}e6)` }}
+    >
+      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
+        <button type="button" onClick={onOpen} aria-label={`Customize ${config.name}`} className="mx-auto shrink-0 rounded-[22%] sm:mx-0">
+          <MascotArt config={config} face="happy" rounded className="size-36 rounded-[22%] shadow-soft ring-4 ring-white/15 sm:size-40" />
+        </button>
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <p className="text-xs font-extrabold tracking-[0.14em] text-white/70 uppercase">Your child&apos;s Oomi</p>
+          <h2 id="mascot-card-title" className="mt-1 font-display text-3xl font-semibold tracking-tight text-white">
+            Meet {config.name}
+          </h2>
+          <ul className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start">
+            {facts.map((fact) => (
+              <li key={fact} className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-white capitalize">
+                {fact}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm leading-relaxed text-white/80">
+            Choose its look, name, voice and personality. It shows up on the necklace, on Oomi TV and in this app.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="rounded-full bg-white px-6 py-3 font-display text-lg font-semibold text-navy-900 shadow-soft transition-transform hover:-translate-y-0.5"
+          >
+            Open the studio
+          </button>
+          {portraitUrl && (
+            <span className="flex items-center gap-2 text-xs font-bold text-white/80">
+              {/* Portraits are served from the database behind the access cookie, so next/image can't optimize them. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={portraitUrl} alt="" className="size-7 rounded-lg object-cover" /> Painted avatar in use
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

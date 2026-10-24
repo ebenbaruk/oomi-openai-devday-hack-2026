@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useAnimationFrame, useMotionValue, useSpring, useTransform } from "motion/react";
 import { useEffect, useId, useState } from "react";
-import type { Face } from "@/lib/contracts";
+import type { Face, MascotConfig } from "@/lib/contracts";
 
 // Pure SVG on a 200×200 round screen, so the same drawing can be ported to the necklace's display.
 // One shape per face (SPEC §5.1), drawn so they port to the necklace's round screen.
@@ -50,6 +50,25 @@ const LOOKS: Record<Face, Look> = {
   grown_up: { left: open(24, 28, { px: 2, py: 2, pr: 11 }), right: crescent("up"), tilt: 3, blush: true },
   sleep: { left: crescent("down"), right: crescent("down"), tilt: 0, blush: false },
 };
+
+export type EyeStyle = MascotConfig["eyes"];
+
+/** Reshapes an open eye to the family's chosen eye style; "round" is the classic Oomi look. */
+function styled(eye: Eye, style: EyeStyle): Eye {
+  if (eye.kind !== "open") return eye;
+  switch (style) {
+    case "round":
+      return eye;
+    case "dots":
+      return { ...eye, rx: eye.rx * 0.55, ry: eye.rx * 0.55, pr: 0 };
+    case "ovals":
+      return { ...eye, rx: eye.rx * 0.72, ry: eye.ry * 1.15, pr: eye.pr * 0.8 };
+    case "sleepy":
+      return { ...eye, lid: Math.max(eye.lid, 0.42) };
+    case "sparkle":
+      return { ...eye, pr: eye.pr * 1.45 };
+  }
+}
 
 const SPRING = { type: "spring", stiffness: 260, damping: 20 } as const;
 const CREAM = "#fdf3e1";
@@ -104,7 +123,7 @@ function EyeShape({
               />
               <motion.circle
                 fill="#ffffff"
-                r={3.2}
+                r={eye.pr === 0 ? 0 : eye.pr > 14 ? 5 : 3.2}
                 animate={{ cx: eye.px + wander.x + eye.pr * 0.4, cy: eye.py + wander.y - eye.pr * 0.42 }}
                 transition={SPRING}
               />
@@ -176,8 +195,9 @@ function Zzz() {
   );
 }
 
-export function OomiEyes({ face, level }: { face: Face; level?: () => number }) {
-  const look = LOOKS[face];
+export function OomiEyes({ face, level, eyeStyle = "round" }: { face: Face; level?: () => number; eyeStyle?: EyeStyle }) {
+  const base = LOOKS[face];
+  const look = { ...base, left: styled(base.left, eyeStyle), right: styled(base.right, eyeStyle) };
   const uid = useId().replace(/:/g, "");
   const [wander, setWander] = useState({ x: 0, y: 0 });
   const [blinking, setBlinking] = useState(false);

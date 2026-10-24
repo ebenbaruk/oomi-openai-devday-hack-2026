@@ -4,9 +4,11 @@ import Link from "next/link";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { DiscoveryCard, Journal, MemoryItem } from "@/lib/contracts";
+import { MascotProvider } from "@/components/mascot/mascot-context";
 import { ChildView } from "./child-view";
 import type { DiscoveryActions } from "./discovery-card";
 import { HeartIcon, NecklaceIcon, SlidersIcon, SunIcon, TvIcon } from "./icons";
+import { MascotStudio } from "./mascot-studio";
 import { SettingsView } from "./settings-view";
 import { TodayView } from "./today-view";
 import { OomiPebble } from "./ui";
@@ -113,50 +115,55 @@ export function ParentApp({ initialJournal, initialView }: { initialJournal: Jou
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="relative min-h-dvh overflow-x-clip">
-        <Backdrop />
-        <Header tabs={tabs} view={view} onNavigate={navigate} sync={sync} />
+      <MascotProvider value={journal.mascot}>
+        <div className="relative min-h-dvh overflow-x-clip">
+          <Backdrop />
+          <Header tabs={tabs} view={view} onNavigate={navigate} sync={sync} />
 
-        <main className="relative mx-auto max-w-6xl px-4 pt-5 pb-32 sm:px-6 sm:pt-8 md:pb-20">
-          {isClient ? (
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={view}
-                initial={{ opacity: 0, y: 12 }}
+          <main className="relative mx-auto max-w-6xl px-4 pt-5 pb-32 sm:px-6 sm:pt-8 md:pb-20">
+            {isClient ? (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={view}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22 }}
+                >
+                  {view === "today" && (
+                    <TodayView journal={journal} freshIds={freshIds} actions={actions} onStoryWritten={refresh} />
+                  )}
+                  {view === "child" && (
+                    <ChildView journal={journal} actions={actions} onForget={forgetMemory} onForgetAll={forgetAllMemory} />
+                  )}
+                  {view === "settings" && (
+                    <SettingsView journal={journal} onSaved={refresh} onEraseAll={eraseAll} onOpenStudio={() => navigate("mascot")} />
+                  )}
+                  {view === "mascot" && <MascotStudio journal={journal} onBack={() => navigate("settings")} onSaved={refresh} />}
+                </motion.div>
+              </AnimatePresence>
+            ) : (
+              <LoadingPage />
+            )}
+          </main>
+
+          <BottomTabs tabs={tabs} view={view} onNavigate={navigate} />
+
+          <AnimatePresence>
+            {toast && (
+              <motion.p
+                role="alert"
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.22 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="fixed inset-x-4 bottom-24 z-40 mx-auto max-w-sm rounded-2xl bg-navy-900 px-4 py-3 text-center text-sm font-semibold text-cream-50 shadow-card md:bottom-8"
               >
-                {view === "today" && (
-                  <TodayView journal={journal} freshIds={freshIds} actions={actions} onStoryWritten={refresh} />
-                )}
-                {view === "child" && (
-                  <ChildView journal={journal} actions={actions} onForget={forgetMemory} onForgetAll={forgetAllMemory} />
-                )}
-                {view === "settings" && <SettingsView journal={journal} onSaved={refresh} onEraseAll={eraseAll} />}
-              </motion.div>
-            </AnimatePresence>
-          ) : (
-            <LoadingPage />
-          )}
-        </main>
-
-        <BottomTabs tabs={tabs} view={view} onNavigate={navigate} />
-
-        <AnimatePresence>
-          {toast && (
-            <motion.p
-              role="alert"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed inset-x-4 bottom-24 z-40 mx-auto max-w-sm rounded-2xl bg-navy-900 px-4 py-3 text-center text-sm font-semibold text-cream-50 shadow-card md:bottom-8"
-            >
-              {toast}
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </div>
+                {toast}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+      </MascotProvider>
     </MotionConfig>
   );
 }
@@ -172,6 +179,9 @@ function Backdrop() {
 }
 
 type Tab = { id: View; label: string; icon: ReactNode };
+
+/** The studio lives under Settings, so that tab stays lit there. */
+const tabOf = (view: View): View => (view === "mascot" ? "settings" : view);
 
 function Header({ tabs, view, onNavigate, sync }: { tabs: Tab[]; view: View; onNavigate: (view: View) => void; sync: SyncState }) {
   return (
@@ -191,13 +201,13 @@ function Header({ tabs, view, onNavigate, sync }: { tabs: Tab[]; view: View; onN
               <li key={tab.id}>
                 <button
                   type="button"
-                  aria-current={view === tab.id ? "page" : undefined}
+                  aria-current={tabOf(view) === tab.id ? "page" : undefined}
                   onClick={() => onNavigate(tab.id)}
                   className={`relative flex items-center gap-2 rounded-full px-5 py-2 font-display text-base font-semibold transition-colors ${
-                    view === tab.id ? "text-white" : "text-navy-600 hover:text-navy-900"
+                    tabOf(view) === tab.id ? "text-white" : "text-navy-600 hover:text-navy-900"
                   }`}
                 >
-                  {view === tab.id && (
+                  {tabOf(view) === tab.id && (
                     <motion.span
                       layoutId="desktop-tab"
                       className="absolute inset-0 rounded-full bg-navy-900"
@@ -260,7 +270,7 @@ function BottomTabs({ tabs, view, onNavigate }: { tabs: Tab[]; view: View; onNav
     >
       <ul className="mx-auto grid max-w-md grid-cols-3 px-3 py-2">
         {tabs.map((tab) => {
-          const active = view === tab.id;
+          const active = tabOf(view) === tab.id;
           return (
             <li key={tab.id}>
               <button

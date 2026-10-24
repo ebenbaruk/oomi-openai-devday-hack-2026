@@ -3,6 +3,8 @@
 import { motion } from "motion/react";
 import type { Face } from "@/lib/contracts";
 import { OomiEyes } from "@/components/device/oomi-eyes";
+import { MascotArt } from "@/components/mascot/mascot-art";
+import { isClassicLook, useMascot } from "@/components/mascot/mascot-context";
 
 type Props = {
   face: Face;
@@ -12,8 +14,20 @@ type Props = {
   float?: boolean;
 };
 
-/** Oomi as a little character: the coral pebble from the necklace with its round navy screen. */
+/** Oomi as a little character: the family's own mascot, or the classic coral pebble with its round navy screen. */
 export function OomiBuddy({ face, level, className = "size-24", float = true }: Props) {
+  const mascot = useMascot();
+  if (mascot && !isClassicLook(mascot.config)) {
+    return (
+      <motion.div
+        className={`relative shrink-0 ${className}`}
+        animate={float ? { y: [0, -6, 0], rotate: [-2, 2, -2] } : undefined}
+        transition={float ? { duration: 4.5, repeat: Infinity, ease: "easeInOut" } : undefined}
+      >
+        <MascotArt config={mascot.config} face={face} level={level} bare className="size-full drop-shadow-[0_5px_0_var(--color-navy-900)]" label={mascot.config.name} />
+      </motion.div>
+    );
+  }
   return (
     <motion.div
       className={`relative shrink-0 ${className}`}

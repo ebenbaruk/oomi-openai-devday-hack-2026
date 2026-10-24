@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_MASCOT_STATE } from "@/components/mascot/mascot-context";
 import type { Journal } from "@/lib/contracts";
 
 const POLL_INTERVAL_MS = 5000;
@@ -32,6 +33,7 @@ export function normalizeJournal(raw: Journal): Journal {
   const partial = raw as Partial<Journal> & Pick<Journal, "child" | "settings">;
   return {
     ...raw,
+    mascot: partial.mascot ?? DEFAULT_MASCOT_STATE,
     settings: { ...raw.settings, videosEnabled: raw.settings.videosEnabled ?? true },
     today: partial.today ?? { questions: 0, activities: 0, topics: 0 },
     digest: partial.digest ?? { headline: "", text: "" },

@@ -4,19 +4,38 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Face } from "@/lib/contracts";
+import { MascotArt } from "@/components/mascot/mascot-art";
+import { isClassicLook, useFetchedMascot } from "@/components/mascot/mascot-context";
+import type { Face, MascotConfig } from "@/lib/contracts";
 import { OomiDevice, type DeviceMode, type TurnLog } from "@/lib/device/oomi-device";
 import { DemoConsole } from "./demo-console";
 import { Necklace } from "./necklace";
 import { Backdrop, FaceStickers } from "./scene";
 
-function Header({ consoleOpen, onToggleConsole }: { consoleOpen: boolean; onToggleConsole: () => void }) {
+function Header({
+  consoleOpen,
+  onToggleConsole,
+  mascot,
+  name,
+}: {
+  consoleOpen: boolean;
+  onToggleConsole: () => void;
+  mascot: MascotConfig | null;
+  name: string;
+}) {
   const pill = "btn-chunky rounded-full bg-white px-3 py-1.5 font-display text-sm font-semibold text-navy-900 sm:px-4";
   return (
     <header className="relative z-10 mx-auto flex w-full max-w-[1400px] items-center gap-2 px-4 pt-4 sm:px-6">
       <Link href="/" className="mr-auto flex items-center gap-2 font-display text-2xl font-semibold tracking-tight text-navy-900">
-        <Image src="/brand/oomi-mascot.png" alt="" width={40} height={40} className="h-10 w-10 rounded-2xl border-[2.5px] border-navy-900 bg-white" />
+        {mascot ? (
+          <MascotArt config={mascot} face="idle" rounded className="h-10 w-10 rounded-2xl border-[2.5px] border-navy-900" />
+        ) : (
+          <Image src="/brand/oomi-mascot.png" alt="" width={40} height={40} className="h-10 w-10 rounded-2xl border-[2.5px] border-navy-900 bg-white" />
+        )}
         oomi
+        {name !== "Oomi" && (
+          <span className="rounded-full border-2 border-navy-900 bg-sun-300 px-2.5 py-0.5 text-sm font-semibold -rotate-2">{name}</span>
+        )}
       </Link>
       <Link href="/parent" className={pill}>
         Parent app
@@ -36,7 +55,7 @@ function Header({ consoleOpen, onToggleConsole }: { consoleOpen: boolean; onTogg
   );
 }
 
-function Hint({ awake }: { awake: boolean }) {
+function Hint({ awake, name }: { awake: boolean; name: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, rotate: -2 }}
@@ -54,7 +73,7 @@ function Hint({ awake }: { awake: boolean }) {
           to talk
         </span>
       ) : (
-        <span>Tap the button to wake Oomi</span>
+        <span>Tap the button to wake {name}</span>
       )}
     </motion.div>
   );
@@ -91,6 +110,10 @@ export function Simulator() {
   const [consoleOpen, setConsoleOpen] = useState(true);
 
   const level = useCallback(() => deviceRef.current?.level() ?? 0, []);
+  const mascotState = useFetchedMascot();
+  const name = mascotState?.config.name ?? "Oomi";
+  // The classic look keeps the hand-tuned coral render; any other look repaints the necklace.
+  const custom = mascotState && !isClassicLook(mascotState.config) ? mascotState.config : null;
 
   const wake = useCallback(async (nextMode: DeviceMode): Promise<boolean> => {
     deviceRef.current?.close();
@@ -175,13 +198,13 @@ export function Simulator() {
   };
 
   const night = awake && face === "sleep";
-  const statusText = waking ? "Waking up…" : pressed ? (micOpen ? "I'm listening!" : "Getting ready…") : status;
+  const statusText = waking ? "Waking up…" : pressed ? (micOpen ? "I'm listening!" : "Getting ready…") : status.replace(/\bOomi\b/g, name);
 
   return (
     <MotionConfig reducedMotion="user">
       <div className="relative flex min-h-dvh flex-col overflow-x-hidden text-navy-900">
         <Backdrop night={night} />
-        <Header consoleOpen={consoleOpen} onToggleConsole={() => setConsoleOpen((open) => !open)} />
+        <Header consoleOpen={consoleOpen} onToggleConsole={() => setConsoleOpen((open) => !open)} mascot={custom} name={name} />
 
         <main
           className={`relative z-10 mx-auto grid w-full max-w-[1400px] flex-1 content-start gap-6 px-4 pt-2 pb-10 sm:px-6 lg:items-start ${
@@ -206,13 +229,14 @@ export function Simulator() {
                 onPress={press}
                 onRelease={release}
                 onToggleMic={() => setMicEnabled((value) => !value)}
+                look={custom}
               />
             </div>
 
             <div className="mt-2 flex min-h-14 flex-col items-center">
               <AnimatePresence mode="wait">
                 {!talkedOnce && !waking ? (
-                  <Hint key={awake ? "talk" : "wake"} awake={awake} />
+                  <Hint key={awake ? "talk" : "wake"} awake={awake} name={name} />
                 ) : (
                   <motion.p
                     key={statusText}

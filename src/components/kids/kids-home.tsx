@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { useState } from "react";
+import { useMascot } from "@/components/mascot/mascot-context";
 import type { KidLibrary, KidVideo, StoryCard } from "@/lib/contracts";
 import { MoonShape, PlayIcon, StarShape } from "./icons";
 import { OomiBuddy } from "./oomi-buddy";
@@ -61,11 +62,14 @@ export function KidsHome({ library, onPlayVideo, onOpenStory }: Props) {
 
 function Greeting({ name, resting }: { name: string; resting: boolean }) {
   const [waves, setWaves] = useState(0);
+  const buddyName = useMascot()?.config.name ?? "Oomi";
+  // A renamed companion introduces itself; the classic Oomi doesn't need to.
+  const intro = buddyName === "Oomi" ? "" : `I'm ${buddyName}! `;
   return (
     <header className="flex items-center gap-5 sm:gap-8">
       <motion.button
         type="button"
-        aria-label="Say hi to Oomi"
+        aria-label={`Say hi to ${buddyName}`}
         onClick={() => setWaves((count) => count + 1)}
         animate={waves ? { rotate: [0, -12, 10, -6, 0], scale: [1, 1.08, 1] } : undefined}
         key={waves}
@@ -82,6 +86,7 @@ function Greeting({ name, resting }: { name: string; resting: boolean }) {
         <SpeechBubble className="-rotate-1">
           <h1 className="font-display text-4xl leading-none font-semibold tracking-tight sm:text-6xl">Hi {name}!</h1>
           <p className="mt-1.5 font-display text-base font-medium text-navy-600 sm:text-xl">
+            {intro}
             {resting ? "Oomi TV is resting." : "Let's watch what you discovered!"}
           </p>
         </SpeechBubble>

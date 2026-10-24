@@ -3,6 +3,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import { OomiEyes } from "@/components/device/oomi-eyes";
+import { MascotArt } from "@/components/mascot/mascot-art";
+import { isClassicLook, useMascot } from "@/components/mascot/mascot-context";
 import type { Face } from "@/lib/contracts";
 
 // ---------- Topic accents: one color family per card, picked from the topic itself ----------
@@ -84,8 +86,26 @@ export function accentFor(text: string | null | undefined): Accent {
 
 // ---------- Oomi himself ----------
 
-/** Oomi: the navy screen with animated eyes, set in a coral pebble like the real necklace. */
+/**
+ * Oomi as the family made it: their painted portrait, their custom character,
+ * or the classic navy screen with animated eyes set in a coral pebble like the real necklace.
+ */
 export function OomiPebble({ face = "idle", className = "size-10" }: { face?: Face; className?: string }) {
+  const mascot = useMascot();
+  if (mascot?.portraitUrl) {
+    return (
+      // Portraits are served from the database behind the access cookie, so next/image can't optimize them.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={mascot.portraitUrl} alt="" aria-hidden className={`inline-block shrink-0 rounded-[30%] object-cover shadow-sm ${className}`} />
+    );
+  }
+  if (mascot && !isClassicLook(mascot.config)) {
+    return (
+      <span aria-hidden className={`inline-block shrink-0 overflow-hidden rounded-[30%] shadow-sm ${className}`}>
+        <MascotArt config={mascot.config} face={face} className="size-full" />
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden
