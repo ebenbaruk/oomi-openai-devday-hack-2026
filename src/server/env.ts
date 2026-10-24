@@ -3,6 +3,9 @@ import { z } from "zod";
 
 const Env = z.object({
   OPENAI_API_KEY: z.string().min(1),
+  // Backup keys, used in order when the primary one is out of credits or revoked.
+  OPENAI_API_KEY_FALLBACK_1: z.string().optional(),
+  OPENAI_API_KEY_FALLBACK_2: z.string().optional(),
   DATABASE_URL: z.string().min(1),
   OOMI_ACCESS_CODE: z.string().min(8),
   OOMI_SESSION_SECRET: z.string().min(16),
@@ -18,9 +21,17 @@ const Env = z.object({
   OOMI_VOICE: z.string().default("marin"),
 });
 
-let cached: z.infer<typeof Env> | undefined;
+type Config = z.infer<typeof Env> & { openaiKeys: string[] };
 
-export function env() {
-  cached ??= Env.parse(process.env);
+let cached: Config | undefined;
+
+export function env(): Config {
+  if (!cached) {
+    const parsed = Env.parse(process.env);
+    const openaiKeys = [parsed.OPENAI_API_KEY, parsed.OPENAI_API_KEY_FALLBACK_1, parsed.OPENAI_API_KEY_FALLBACK_2].filter(
+      (key): key is string => Boolean(key?.trim()),
+    );
+    cached = { ...parsed, openaiKeys };
+  }
   return cached;
 }

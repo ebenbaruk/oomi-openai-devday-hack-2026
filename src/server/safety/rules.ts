@@ -82,3 +82,11 @@ const STORY_REQUEST = /\b(tell|read) me (a|another) (bedtime )?story\b|\bbedtime
 export function isStoryRequest(text: string): boolean {
   return STORY_REQUEST.test(text);
 }
+
+// Instant language guess for turns decided by the rules alone (no classifier call).
+const FRENCH_HINT =
+  /[àâçéèêëîïôûùüÿœ]|\b(je|tu|il|elle|nous|vous|est|les|des|une|pourquoi|comment|quoi|qui|o[uù]|c'est|qu'est|moi|mon|ma|mes|ton|ta|veux|peux|fait|faire|avec|dans|sur|pas)\b/i;
+
+export function guessLanguage(text: string): "en" | "fr" {
+  return FRENCH_HINT.test(text) ? "fr" : "en";
+}

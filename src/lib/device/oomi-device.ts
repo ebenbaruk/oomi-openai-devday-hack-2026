@@ -2,7 +2,7 @@
 // Live mode: audio flows directly between the device and OpenAI over WebRTC, but the server gates
 // every turn (SPEC §7.1). Turn mode: record → server → TTS, same gate, for when live is unavailable.
 
-import type { CompleteTurnResponse, Face, GateResponse, SessionResponse, StoryResponse } from "@/lib/contracts";
+import type { CompleteTurnResponse, Face, GateResponse, Language, SessionResponse, StoryResponse } from "@/lib/contracts";
 
 export type DeviceMode = "live" | "turn";
 
@@ -12,6 +12,8 @@ export type TurnLog = {
   answer: string;
   verdict?: string;
   intent?: string;
+  /** Language the child spoke in; Oomi answers in the same one. */
+  language?: Language;
   /** Button release → transcript ready, → safety verdict, → first sound from Oomi. */
   heardMs?: number;
   checkedMs?: number;
@@ -26,7 +28,7 @@ export type DeviceListener = {
   status: (status: string) => void;
 };
 
-type SpeakPlan = { turnId: string; endFace: Face; question: string };
+type SpeakPlan = { turnId: string; endFace: Face; question: string; language: Language };
 
 const RELEASE_TAIL_MS = 150;
 const MIN_PRESS_MS = 450;
@@ -48,6 +50,8 @@ export class OomiDevice {
   readonly mode: DeviceMode;
   private listener: DeviceListener;
   private sessionId?: string;
+  /** Family language, used until the child has spoken. */
+  private language: Language = "en";
   private mic?: MediaStream;
   private audioContext?: AudioContext;
   private analysers: AnalyserNode[] = [];
@@ -103,6 +107,7 @@ export class OomiDevice {
       return;
     }
     this.sessionId = session.sessionId;
+    this.language = session.language;
     this.audioContext = new AudioContext();
     try {
       this.mic = await navigator.mediaDevices.getUserMedia({
@@ -370,19 +375,20 @@ export class OomiDevice {
     if (gate.action === "sleep") {
       dropAudioItem();
       this.asleep = true;
-      this.speakExactly(gate.say, { turnId: "sleep", endFace: "sleep", question }, releasedAt, log);
+      this.speakExactly(gate.say, { turnId: "sleep", endFace: "sleep", question, language: this.language }, releasedAt, log);
       return;
     }
     log.verdict = "verdict" in gate ? gate.verdict : "answer";
     log.intent = "intent" in gate ? gate.intent : "story";
+    log.language = gate.language;
     this.listener.turn({ ...log });
 
     if (gate.action === "story") {
       dropAudioItem();
-      await this.tellStory(gate.say, releasedAt, log);
+      await this.tellStory(gate.say, gate.language, releasedAt, log);
       return;
     }
-    const plan = { turnId: gate.turnId, endFace: gate.endFace, question };
+    const plan = { turnId: gate.turnId, endFace: gate.endFace, question, language: gate.language };
     if (gate.exactText) {
       // Declined or redirected questions never enter the model's conversation.
       dropAudioItem();
@@ -402,7 +408,7 @@ export class OomiDevice {
 
   private speakExactly(text: string, plan: SpeakPlan, releasedAt: number, log: TurnLog): void {
     if (this.mode === "turn") {
-      void this.playTts(text, "playful", releasedAt, log).then(() => {
+      void this.playTts(text, "playful", plan.language, releasedAt, log).then(() => {
         void this.completeTurnTurnMode(plan, text);
         this.finishSpeaking(plan.endFace, log);
       });
@@ -426,6 +432,7 @@ export class OomiDevice {
       sessionId: this.sessionId,
       turnId: plan.turnId,
       answer,
+      language: plan.language,
     }).catch(() => ({ safe: true }) as CompleteTurnResponse);
     if (!result.safe && result.replacement && this.speaking?.turnId === plan.turnId) {
       const log = this.speaking.log;
@@ -446,10 +453,10 @@ export class OomiDevice {
 
   // ---------- Bedtime story (both modes: expressive TTS narration) ----------
 
-  private async tellStory(intro: string, releasedAt: number, log: TurnLog): Promise<void> {
-    const storyPromise = postJson<StoryResponse>("/api/story");
+  private async tellStory(intro: string, language: Language, releasedAt: number, log: TurnLog): Promise<void> {
+    const storyPromise = postJson<StoryResponse>("/api/story", { language });
     this.listener.face("curious");
-    await this.playTts(intro, "playful", releasedAt, log);
+    await this.playTts(intro, "playful", language, releasedAt, log);
     this.listener.face("thinking");
     const story = await storyPromise;
     log.answer = `📖 ${story.title}\n\n${story.text}`;
@@ -467,11 +474,11 @@ export class OomiDevice {
     }
   }
 
-  private async playTts(text: string, style: "playful" | "bedtime", releasedAt: number, log: TurnLog): Promise<void> {
+  private async playTts(text: string, style: "playful" | "bedtime", language: Language, releasedAt: number, log: TurnLog): Promise<void> {
     const response = await fetch("/api/speech", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, style }),
+      body: JSON.stringify({ text, style, language }),
     });
     if (!response.ok) throw new Error(`speech failed with ${response.status}`);
     const url = URL.createObjectURL(await response.blob());
@@ -543,15 +550,21 @@ export class OomiDevice {
     }
     log.verdict = gate.verdict;
     log.intent = gate.intent;
+    log.language = gate.language;
     log.answer = reply;
     this.listener.face(gate.face);
-    await this.playTts(reply, "playful", releasedAt, log);
-    await this.completeTurnTurnMode({ turnId: gate.turnId, endFace: gate.endFace, question: result.transcript }, reply);
+    await this.playTts(reply, "playful", gate.language, releasedAt, log);
+    await this.completeTurnTurnMode(
+      { turnId: gate.turnId, endFace: gate.endFace, question: result.transcript, language: gate.language },
+      reply,
+    );
     this.finishSpeaking(gate.endFace, log);
   }
 
   private async completeTurnTurnMode(plan: SpeakPlan, answer: string): Promise<void> {
-    await postJson("/api/turn/complete", { sessionId: this.sessionId, turnId: plan.turnId, answer }).catch(() => undefined);
+    await postJson("/api/turn/complete", { sessionId: this.sessionId, turnId: plan.turnId, answer, language: plan.language }).catch(
+      () => undefined,
+    );
   }
 }
 

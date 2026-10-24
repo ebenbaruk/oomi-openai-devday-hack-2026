@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyRules, checkInput, isStoryRequest } from "@/server/safety/rules";
+import { applyRules, checkInput, guessLanguage, isStoryRequest } from "@/server/safety/rules";
 
 describe("checkInput", () => {
   it.each(["", "you", "Thank you.", "Thanks for watching!", "Subtitles by the community", "ご視聴ありがとうございました", "..."])(
@@ -50,5 +50,18 @@ describe("isStoryRequest", () => {
     expect(isStoryRequest("Tell me a bedtime story")).toBe(true);
     expect(isStoryRequest("Oomi, raconte-moi une histoire")).toBe(true);
     expect(isStoryRequest("How do stories get printed?")).toBe(false);
+  });
+});
+
+describe("guessLanguage", () => {
+  it.each([
+    ["Pourquoi le ciel est bleu ?", "fr"],
+    ["Comment volent les avions ?", "fr"],
+    ["Raconte-moi une histoire", "fr"],
+    ["Why is the sky blue?", "en"],
+    ["How do airplanes fly?", "en"],
+    ["What's the best dinosaur?", "en"],
+  ])("%s → %s", (text, language) => {
+    expect(guessLanguage(text)).toBe(language);
   });
 });

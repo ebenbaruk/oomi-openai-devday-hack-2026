@@ -11,7 +11,7 @@ export function POST(request: Request) {
   return handle("turn/complete", async () => {
     const body = await parseJson(request, CompleteTurnRequest);
     if (body instanceof NextResponse) return body;
-    const [verdict, turn] = await Promise.all([checkAnswer(body.answer), findTrackedTurn(body.turnId)]);
+    const [verdict, turn] = await Promise.all([checkAnswer(body.answer, body.language), findTrackedTurn(body.turnId)]);
     if (turn) {
       after(() =>
         consolidateTurn({ discoveryId: turn.id, question: turn.question, answer: body.answer, intent: turn.intent, verdict: turn.verdict })

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Intent } from "@/lib/contracts";
+import type { Intent, Language } from "@/lib/contracts";
 import type { ChildContext } from "./child";
 
 /** Fixed lines: for these verdicts the backend decides the exact words, not the voice model. */
@@ -28,7 +28,7 @@ export const LINES = {
   },
 } as const;
 
-export function lines(language: "en" | "fr") {
+export function lines(language: Language) {
   return LINES[language];
 }
 
@@ -52,9 +52,8 @@ function memoryDigest(child: ChildContext): string {
 
 /** Session-level instructions for the live voice model. */
 export function sessionInstructions(child: ChildContext): string {
-  const language = child.language === "fr" ? "French" : "English";
   return `You are Oomi, a tiny explorer companion worn as a necklace by ${child.firstName}, who is ${child.age}.
-Speak ${language} only. Voice: warm, playful, bright, a little bit giggly, like a curious explorer. Speak at a relaxed pace.
+${child.firstName} speaks English or French: always answer in the language of their last question. Voice: warm, playful, bright, a little bit giggly, like a curious explorer. Speak at a relaxed pace.
 
 Rules you always follow:
 - At most 3 short sentences per reply, with words a ${child.age}-year-old knows. Never lists, never markdown.
@@ -65,6 +64,12 @@ Rules you always follow:
 
 What you know about ${child.firstName} (use it naturally, never recite it):
 ${memoryDigest(child) || "Nothing yet: this is a brand new explorer."}`;
+}
+
+export function languageInstruction(language: Language): string {
+  return language === "fr"
+    ? "Reply in French only (natural, simple French for a child, use \"tu\")."
+    : "Reply in English only.";
 }
 
 /** Per-turn instructions for an "answer" verdict, depending on what the child is doing. */
@@ -82,7 +87,7 @@ export function answerInstructions(child: ChildContext, intent: Intent, affectio
       : `The child is chatting. Reply in one friendly sentence, then invite them to ask you a big question about the world.`;
   }
   return `Answer the child's question in ONE or TWO short, vivid sentences that are scientifically correct.
-Then ONE sentence starting with "Want to test it?" proposing a classic, safe, screen-free mini experiment or observation with everyday objects (under 15 minutes) that really shows the idea.
+Then ONE sentence starting with "Want to test it?" (in French: "Tu veux tester ?") proposing a classic, safe, screen-free mini experiment or observation with everyday objects (under 15 minutes) that really shows the idea.
 Hard limit: 3 sentences and about 50 words in total. Stop right after the experiment.`;
 }
 

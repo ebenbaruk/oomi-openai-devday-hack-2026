@@ -89,3 +89,34 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO oomi_app.settings (child_id)
 VALUES ('00000000-0000-4000-8000-000000000001')
 ON CONFLICT (child_id) DO NOTHING;
+
+-- v2: languages, activities done together, Oomi TV explainers, cached narration.
+ALTER TABLE oomi_app.discovery ADD COLUMN IF NOT EXISTS language text NOT NULL DEFAULT 'en';
+ALTER TABLE oomi_app.discovery ADD COLUMN IF NOT EXISTS done_at timestamptz;
+ALTER TABLE oomi_app.settings ADD COLUMN IF NOT EXISTS videos_enabled boolean NOT NULL DEFAULT true;
+ALTER TABLE oomi_app.story ADD COLUMN IF NOT EXISTS language text NOT NULL DEFAULT 'en';
+ALTER TABLE oomi_app.story ADD COLUMN IF NOT EXISTS audio_id uuid;
+
+-- Narration audio and other generated media that are not pictures.
+CREATE TABLE IF NOT EXISTS oomi_app.media (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  mime text NOT NULL,
+  data bytea NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Oomi TV: a short motion-design explainer of one discovery, replayable on the family tablet.
+CREATE TABLE IF NOT EXISTS oomi_app.explainer (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  child_id uuid NOT NULL REFERENCES oomi_app.child(id) ON DELETE CASCADE,
+  discovery_id uuid NOT NULL UNIQUE REFERENCES oomi_app.discovery(id) ON DELETE CASCADE,
+  language text NOT NULL DEFAULT 'en',
+  title text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ready', 'failed')),
+  scenes jsonb NOT NULL DEFAULT '[]',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Demo content is upserted by key, so re-seeding before a demo only refreshes dates (no new images).
+ALTER TABLE oomi_app.discovery ADD COLUMN IF NOT EXISTS seed_key text UNIQUE;
+ALTER TABLE oomi_app.story ADD COLUMN IF NOT EXISTS seed_key text UNIQUE;

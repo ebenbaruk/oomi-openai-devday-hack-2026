@@ -18,6 +18,7 @@ type ChildRow = {
   allowed_start: string;
   allowed_end: string;
   story_enabled: boolean;
+  videos_enabled: boolean;
   timezone: string;
 };
 
@@ -52,7 +53,7 @@ export async function loadChild(): Promise<ChildContext> {
       `SELECT c.first_name, c.age, c.language, s.max_session_minutes,
               to_char(s.allowed_start, 'HH24:MI') AS allowed_start,
               to_char(s.allowed_end, 'HH24:MI') AS allowed_end,
-              s.story_enabled, s.timezone
+              s.story_enabled, s.videos_enabled, s.timezone
        FROM oomi_app.child c JOIN oomi_app.settings s ON s.child_id = c.id WHERE c.id = $1`,
       [CHILD_ID],
     ),
@@ -71,6 +72,7 @@ export async function loadChild(): Promise<ChildContext> {
       allowedStart: row.allowed_start,
       allowedEnd: row.allowed_end,
       storyEnabled: row.story_enabled,
+      videosEnabled: row.videos_enabled,
       timezone: row.timezone,
     },
     memory,
@@ -107,7 +109,7 @@ export async function saveSettings(input: SettingsInput): Promise<void> {
   ]);
   await query(
     `UPDATE oomi_app.settings SET max_session_minutes = $2, allowed_start = $3, allowed_end = $4,
-       story_enabled = $5, updated_at = now() WHERE child_id = $1`,
-    [CHILD_ID, input.maxSessionMinutes, input.allowedStart, input.allowedEnd, input.storyEnabled],
+       story_enabled = $5, videos_enabled = $6, updated_at = now() WHERE child_id = $1`,
+    [CHILD_ID, input.maxSessionMinutes, input.allowedStart, input.allowedEnd, input.storyEnabled, input.videosEnabled],
   );
 }

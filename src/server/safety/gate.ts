@@ -1,10 +1,10 @@
 import "server-only";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import { Intent, Verdict } from "@/lib/contracts";
+import { Intent, Language, Verdict } from "@/lib/contracts";
 import { env } from "../env";
 import { openai, withTimeout } from "../openai";
-import { applyRules, checkInput, isStoryRequest } from "./rules";
+import { applyRules, checkInput, guessLanguage, isStoryRequest } from "./rules";
 
 const GATE_BUDGET_MS = 3500;
 
@@ -15,6 +15,8 @@ export type GateDecision =
       verdict: Verdict;
       intent: Intent;
       question: string;
+      /** Language the child spoke: Oomi always answers in the same one. */
+      language: Language;
       reason: string;
       /** Real risk: shown to the parent in the safety section. */
       alert: boolean;
@@ -29,10 +31,11 @@ const Classification = z.object({
   intent: Intent,
   topic: z.string().describe("1-3 words"),
   distress: z.boolean(),
+  language: Language,
 });
 
 const CLASSIFIER_PROMPT = `You are the safety classifier of Oomi, a voice companion for children aged 6 to 10.
-Classify the child's utterance (it is a speech transcript, possibly imperfect).
+Classify the child's utterance (it is a speech transcript, possibly imperfect). The child speaks English or French.
 
 verdict:
 - "answer": educational or playful question suitable for the child's age (science, animals, space, how things work, words, history for kids, jokes), greetings, small talk, telling Oomi about an experiment, asking for a story.
@@ -45,26 +48,29 @@ intent:
 - "story": asks for a story.
 - "chat": greeting, small talk, feelings, anything else.
 
+language: "fr" if the child spoke French, otherwise "en".
 distress: true only if the child seems in danger, hurt, scared of someone, or sad in a worrying way.
 When unsure between answer and grown_up, choose grown_up. When unsure between grown_up and decline, choose decline.`;
 
 async function classify(text: string) {
-  const response = await openai().responses.parse({
-    model: env().OOMI_MODEL_FAST,
-    reasoning: { effort: "none" },
-    instructions: CLASSIFIER_PROMPT,
-    input: text,
-    text: { format: zodTextFormat(Classification, "classification") },
-    max_output_tokens: 60,
-  });
+  const response = await openai((client) =>
+    client.responses.parse({
+      model: env().OOMI_MODEL_FAST,
+      reasoning: { effort: "none" },
+      instructions: CLASSIFIER_PROMPT,
+      input: text,
+      text: { format: zodTextFormat(Classification, "classification") },
+      max_output_tokens: 70,
+    }),
+  );
   if (!response.output_parsed) throw new Error("Classifier returned no structured output");
   return response.output_parsed;
 }
 
-type ModerationResult = { flagged: boolean; selfHarm: boolean; categories: string[] };
+type ModerationResult = { flagged: boolean; selfHarm: boolean; categories: string[]; maxScore: number };
 
 export async function moderate(text: string): Promise<ModerationResult> {
-  const response = await openai().moderations.create({ model: env().OOMI_MODEL_MODERATION, input: text });
+  const response = await openai((client) => client.moderations.create({ model: env().OOMI_MODEL_MODERATION, input: text }));
   const result = response.results[0];
   const categories = Object.entries(result.categories)
     .filter(([, flagged]) => flagged)
@@ -73,6 +79,7 @@ export async function moderate(text: string): Promise<ModerationResult> {
     flagged: result.flagged,
     selfHarm: categories.some((name) => name.startsWith("self-harm")),
     categories,
+    maxScore: Math.max(...Object.values(result.category_scores)),
   };
 }
 
@@ -81,7 +88,7 @@ export async function gate(transcript: string, audioSeconds?: number): Promise<G
   const input = checkInput(transcript, audioSeconds);
   if (!input.ok) return { kind: "ignore", reason: input.reason };
   const question = input.text;
-  const base = { question, alert: false, distress: false, affection: false };
+  const base = { question, language: guessLanguage(question), alert: false, distress: false, affection: false };
 
   const rule = applyRules(question);
   if (rule?.verdict === "decline") {
@@ -109,7 +116,10 @@ export async function gate(transcript: string, audioSeconds?: number): Promise<G
     if (moderation.selfHarm || classification.distress) {
       return { kind: "verdict", ...base, verdict: "grown_up", intent: "chat", reason: "distress", alert: true, distress: true, source: "moderation" };
     }
-    if (moderation.flagged) {
+    // Moderation over-flags short French phrases ("Raconte-moi une histoire" scores 0.2 violence).
+    // A weak flag only declines when the classifier also sees a problem; a strong one always does.
+    const strongFlag = moderation.flagged && moderation.maxScore >= 0.5;
+    if (strongFlag || (moderation.flagged && classification.verdict !== "answer")) {
       return {
         kind: "verdict",
         ...base,
@@ -124,6 +134,7 @@ export async function gate(transcript: string, audioSeconds?: number): Promise<G
     return {
       kind: "verdict",
       ...base,
+      language: classification.language,
       verdict: rule?.verdict === "answer" ? "answer" : classification.verdict,
       intent,
       reason: rule?.reason ?? classification.topic,

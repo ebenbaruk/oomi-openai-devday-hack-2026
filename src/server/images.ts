@@ -8,16 +8,18 @@ const STYLE = `Soft children's picture-book illustration, rounded shapes, warm p
 gentle grain, cozy and joyful, simple composition, no text, no letters, no words.
 If a small explorer companion appears, it is a round coral pebble-shaped creature with a navy face screen and two big cream eyes.`;
 
-export async function illustrate(scene: string): Promise<string> {
-  const result = await openai().images.generate({
-    model: env().OOMI_MODEL_IMAGE,
-    prompt: `${STYLE}\n\nScene: ${scene}`,
-    size: "1024x1024",
-    quality: "low",
-    output_format: "webp",
-    output_compression: 80,
-    n: 1,
-  });
+export async function illustrate(scene: string, quality: "low" | "medium" = "low"): Promise<string> {
+  const result = await openai((client) =>
+    client.images.generate({
+      model: env().OOMI_MODEL_IMAGE,
+      prompt: `${STYLE}\n\nScene: ${scene}`,
+      size: "1024x1024",
+      quality,
+      output_format: "webp",
+      output_compression: 80,
+      n: 1,
+    }),
+  );
   const base64 = result.data?.[0]?.b64_json;
   if (!base64) throw new Error("Image generation returned no data");
   const row = await queryOne<{ id: string }>(`INSERT INTO oomi_app.image (mime, data) VALUES ($1, $2) RETURNING id`, [
