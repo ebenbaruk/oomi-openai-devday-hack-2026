@@ -41,8 +41,12 @@ Would you let your kid wear something like this? Why or why not?
 
 Building with Ali and Akram.
 
-#BuildInPublic #OpenAI #Hackathon #EdTech #Parenting
+Build in public 🛠️ with @OpenAI @openaidevs @borvibe
+
+#parisdevdayhack #BuildInPublic #OpenAI #Hackathon #EdTech #Parenting
 ```
+
+> **À la publication** : taper `@OpenAI`, `@openaidevs` et `@borvibe` à la main dans LinkedIn et choisir la bonne page dans la liste, sinon le tag ne s'active pas. Pareil pour Ali et Akram.
 
 **Premier commentaire (à poster juste après)** :
 
