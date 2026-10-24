@@ -280,3 +280,16 @@ export type KidLibrary = {
 };
 
 export const CreateExplainerRequest = z.object({ discoveryId: z.uuid() });
+
+// ---------- Apple Watch ----------
+
+/** Result returned to the watch after a recorded push-to-talk turn. */
+export const WatchTurnResponse = z.object({
+  turnId: z.string().min(1),
+  verdict: Verdict,
+  state: z.enum(["happy", "grown_up", "decline"]),
+  text: z.string().min(1).max(1000),
+  audioBase64: z.string().optional(),
+  audioMimeType: z.string().optional(),
+});
+export type WatchTurnResponse = z.infer<typeof WatchTurnResponse>;

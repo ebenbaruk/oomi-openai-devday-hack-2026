@@ -28,7 +28,10 @@ export function SettingsView({
       <MascotCard journal={journal} onOpen={onOpenStudio} />
       {/* On a phone the safety report comes before the erase card; on a laptop they sit side by side. */}
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-        <SettingsForm initial={journal.settings} onSaved={onSaved} />
+        <div className="space-y-8">
+          <SettingsForm initial={journal.settings} onSaved={onSaved} />
+          <WatchPairingCard />
+        </div>
         <div className="space-y-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <SafetyReport journal={journal} />
           <DailyNote journal={journal} />
@@ -36,6 +39,55 @@ export function SettingsView({
         <EraseCard onEraseAll={onEraseAll} />
       </div>
     </div>
+  );
+}
+
+// ---------- Apple Watch ----------
+
+type Pairing = { pairingCode: string; expiresAt: string };
+
+/** A short-lived code keeps the Watch setup simple for a hackathon demo without exposing the adult access code. */
+function WatchPairingCard() {
+  const [pairing, setPairing] = useState<Pairing | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+
+  const prepare = async () => {
+    setState("loading");
+    try {
+      const response = await fetch("/api/watch/pair", { method: "POST" });
+      if (!response.ok) throw new Error("pairing_failed");
+      setPairing(await response.json() as Pairing);
+      setState("idle");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <section className="rounded-[2rem] bg-navy-900 p-5 text-cream-50 shadow-card sm:p-7" aria-labelledby="watch-pairing-title">
+      <div className="flex items-start gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/12 text-xl" aria-hidden>⌚</span>
+        <div>
+          <p className="text-xs font-extrabold tracking-[0.14em] text-mint-200 uppercase">Apple Watch</p>
+          <h2 id="watch-pairing-title" className="mt-1 font-display text-xl font-semibold">Connect Oomi</h2>
+          <p className="mt-1 text-sm leading-relaxed text-cream-100/75">Create a one-time code, then enter it with this site address in the Oomi Watch app.</p>
+        </div>
+      </div>
+
+      {pairing ? (
+        <div className="mt-5 rounded-2xl bg-white/10 p-4">
+          <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Code for this Watch</p>
+          <p className="mt-1 font-mono text-4xl font-bold tracking-[0.24em] text-white">{pairing.pairingCode}</p>
+          <p className="mt-3 text-xs leading-relaxed text-cream-100/75">On the Watch: open ⚙, paste <strong className="font-semibold text-white">{typeof window === "undefined" ? "your deployed Oomi address" : window.location.origin}</strong>, then enter this code. It expires in 15 minutes.</p>
+        </div>
+      ) : (
+        <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-5 rounded-full bg-mint-300 px-5 py-2.5 font-bold text-navy-950 transition hover:bg-mint-200 disabled:opacity-60">
+          {state === "loading" ? "Creating code…" : "Prepare my Apple Watch"}
+        </button>
+      )}
+      {pairing && <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-4 text-sm font-bold text-mint-200 underline underline-offset-4 disabled:opacity-60">Create another code</button>}
+      {state === "error" && <p role="alert" className="mt-3 text-sm font-semibold text-coral-200">Couldn&apos;t create a code. Please try again.</p>}
+    </section>
   );
 }
 

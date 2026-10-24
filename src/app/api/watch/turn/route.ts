@@ -1,14 +1,16 @@
-import { getConfig } from "../../../../server/config";
-import { handleWatchTurn, WatchTurnError } from "../../../../server/transports/watch";
+import { NextResponse } from "next/server";
+import { handle } from "@/server/http";
+import { handleWatchTurn, WatchError } from "@/server/watch";
 
-export const runtime = "nodejs";
+export const maxDuration = 60;
 
-export async function POST(request: Request) {
-  try {
-    const result = await handleWatchTurn(request, getConfig());
-    return Response.json(result, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    if (error instanceof WatchTurnError) return Response.json({ error: error.message }, { status: error.status });
-    return Response.json({ error: "Oomi is unavailable right now." }, { status: 503 });
-  }
+export function POST(request: Request) {
+  return handle("watch-turn", async () => {
+    try {
+      return NextResponse.json(await handleWatchTurn(request), { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      if (error instanceof WatchError) return NextResponse.json({ error: error.message }, { status: error.status });
+      throw error;
+    }
+  });
 }
