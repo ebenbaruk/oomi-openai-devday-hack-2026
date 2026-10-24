@@ -4,8 +4,9 @@ import { Pool } from "pg";
 
 loadEnvConfig(process.cwd());
 async function migrate() {
-  if (!process.env.DATABASE_URL) throw new Error("Configure DATABASE_URL in .env.local first.");
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const connectionString = process.env.DATABASE_URL_MIGRATE ?? process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("Configure DATABASE_URL_MIGRATE or DATABASE_URL in .env.local first.");
+  const pool = new Pool({ connectionString });
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

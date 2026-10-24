@@ -5,7 +5,7 @@ import { getPool } from "../../../../server/db";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   try { if (!canAccessParent(request)) return Response.json({ error: "Accès adulte requis." }, { status: 401 });
-    const rows = await getPool().query("SELECT p.id,p.display_name,p.age,p.language,d.id device_id,d.name device_name,d.status device_status FROM demo_profiles p LEFT JOIN devices d ON d.owner_id=p.id WHERE p.parent_id='00000000-0000-4000-8000-000000000010' ORDER BY p.created_at");
+    const rows = await getPool().query("SELECT c.id,c.first_name,c.age,c.language,d.id device_id,d.name device_name,d.status device_status FROM child c LEFT JOIN watch_devices d ON d.child_id=c.id ORDER BY c.created_at");
     return Response.json(rows.rows, { headers: { "Cache-Control": "no-store" } });
   } catch { return Response.json({ error: "Impossible de lire les profils." }, { status: 503 }); }
 }

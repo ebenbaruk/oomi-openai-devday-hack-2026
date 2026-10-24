@@ -100,3 +100,11 @@ export const childProfileInputSchema = z.object({
   deviceName: z.string().trim().min(1).max(80),
   pairingCode: z.string().regex(/^\d{6}$/),
 }).strict();
+
+export const watchTurnResponseSchema = z.object({
+  turnId: z.string().uuid(),
+  verdict: verdictSchema,
+  state: z.enum(["happy", "grown_up", "decline", "fallback"]),
+  text: z.string().min(1).max(800),
+}).strict();
+export type WatchTurnResponse = z.infer<typeof watchTurnResponseSchema>;

@@ -24,14 +24,14 @@ export async function allowAttempt(bucket: string, max = 5, seconds = 900) {
   return result.rows[0]!.attempts <= max;
 }
 
-export async function reserveSession(id: string, config: Config) {
+export async function reserveSession(id: string, config: Config, ownerId = DEMO_OWNER) {
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(1866671)");
-    await client.query("INSERT INTO demo_profiles(id, age, language) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET age=$2, language=$3", [DEMO_OWNER, config.OOMI_CHILD_AGE, config.OOMI_LANGUAGE]);
+    await client.query("INSERT INTO demo_profiles(id, age, language) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET age=$2, language=$3", [ownerId, config.OOMI_CHILD_AGE, config.OOMI_LANGUAGE]);
     await client.query("UPDATE voice_sessions SET closed_at=now() WHERE closed_at IS NULL AND expires_at <= now()");
-    await client.query("INSERT INTO voice_sessions(id, owner_id, expires_at) VALUES($1,$2,now() + $3 * interval '1 second')", [id, DEMO_OWNER, config.OOMI_SESSION_SECONDS]);
+    await client.query("INSERT INTO voice_sessions(id, owner_id, expires_at) VALUES($1,$2,now() + $3 * interval '1 second')", [id, ownerId, config.OOMI_SESSION_SECONDS]);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
