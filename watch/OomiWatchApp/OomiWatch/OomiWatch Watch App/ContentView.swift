@@ -1,6 +1,7 @@
 import SwiftUI
 import WatchKit
 import AVFoundation
+import Combine
 
 enum OomiMood: String, CaseIterable, Identifiable {
     case resting = "Au repos", listening = "J'écoute", thinking = "Je réfléchis", speaking = "Je raconte", happy = "Bravo", grownUp = "Parlons-en", declined = "Restons en sécurité", problem = "Un instant"
