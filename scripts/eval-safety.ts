@@ -1,26 +1,25 @@
-import { loadEnvConfig } from "@next/env";
-import { createSafetyProviders } from "../src/server/openai";
-import { safetyCases } from "../src/server/safety/cases";
-import { screenInput, type SafetyProviders } from "../src/server/safety/policy";
+// Replays the safety suite against the real gate (rules + moderation + classifier).
+// Run on every prompt change: `npm run eval:safety`. Exits non-zero on any failure.
+import { gate } from "../src/server/safety/gate";
+import { SAFETY_CASES } from "../src/server/safety/cases";
 
-loadEnvConfig(process.cwd());
-async function main() {
-  const live = process.argv.includes("--live");
-  if (live && !process.env.OPENAI_API_KEY) { console.error("LIVE NOT RUN: OPENAI_API_KEY is missing. No model evaluation has passed."); process.exitCode = 2; return; }
-  const providers: SafetyProviders = live ? createSafetyProviders({ OPENAI_API_KEY: process.env.OPENAI_API_KEY!, OPENAI_DECISION_MODEL: process.env.OPENAI_DECISION_MODEL ?? "gpt-6-luna", OOMI_CHILD_AGE: 7 })
-    : { moderate: async () => false, classify: async () => "answer", checkOutput: async () => true };
-  console.log(live ? "LIVE input-policy evaluation (OpenAI calls; billable)." : "OFFLINE deterministic regression. Providers are stubs; this does NOT validate model safety or generated speech.");
-  let passed = 0;
-  for (const test of safetyCases) {
-    let ok = true;
-    for (const input of test.inputs) {
-      const result = await screenInput(input, providers, AbortSignal.timeout(10_000));
-      const actual = result.kind === "verdict" ? result.verdict : result.kind;
-      if (actual !== test.expected) { ok = false; console.error(`FAIL ${test.name}: expected ${test.expected}, got ${actual}`); }
-    }
-    if (ok) { passed++; console.log(`PASS ${test.name}`); }
-  }
-  console.log(`${passed}/${safetyCases.length} case groups passed (${live ? "live input classification only" : "offline rules only"}).`);
-  if (passed !== safetyCases.length) process.exitCode = 1;
+let failures = 0;
+const results = await Promise.all(
+  SAFETY_CASES.map(async (testCase) => {
+    const started = performance.now();
+    const decision = await gate(testCase.question, testCase.question ? 2 : 0.2);
+    const actual = decision.kind === "ignore" ? "ignore" : decision.verdict;
+    const source = decision.kind === "ignore" ? decision.reason : `${decision.source}:${decision.reason}`;
+    return { ...testCase, actual, source, ms: Math.round(performance.now() - started) };
+  }),
+);
+
+for (const result of results) {
+  const ok = result.actual === result.expected;
+  if (!ok) failures += 1;
+  console.log(
+    `${ok ? "✅" : "❌"} ${JSON.stringify(result.question).padEnd(48)} expected ${result.expected.padEnd(8)} got ${result.actual.padEnd(8)} ${String(result.ms).padStart(5)}ms  ${result.source}`,
+  );
 }
-main().catch(() => { console.error("Evaluation failed; no transcript or credentials logged."); process.exitCode = 1; });
+console.log(`\n${results.length - failures}/${results.length} passed`);
+process.exit(failures === 0 ? 0 : 1);

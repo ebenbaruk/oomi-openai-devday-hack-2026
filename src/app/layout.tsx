@@ -1,7 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "Oomi — Little questions, big discoveries", description: "Un petit compagnon d’exploration. Posez une question, puis partez découvrir le monde." };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="fr"><body>{children}</body></html>;
+const fredoka = Fredoka({ variable: "--font-fredoka", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
+const nunito = Nunito({ variable: "--font-nunito", subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: { default: "Oomi", template: "%s · Oomi" },
+  description: "A little companion for big questions.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#fdf6ea",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="en" className={`${fredoka.variable} ${nunito.variable} h-full antialiased`}>
+      <body className="min-h-full">{children}</body>
+    </html>
+  );
 }

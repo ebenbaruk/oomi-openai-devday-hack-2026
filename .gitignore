@@ -54,5 +54,5 @@ logs/
 coverage/
 tmp/
 
-watch/**/xcuserdata/
-*.xcuserstate
+# --- Next.js generated ---
+next-env.d.ts

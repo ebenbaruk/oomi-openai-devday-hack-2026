@@ -1,15 +1,20 @@
 import type { NextConfig } from "next";
 
-const config: NextConfig = {
-  poweredByHeader: false,
-  serverExternalPackages: ["ws", "pg"],
+const nextConfig: NextConfig = {
+  // Every page reads live data (journal, sessions): no build-time prerendering of app data.
+  cacheComponents: false,
+  // The simulator needs the microphone; nothing else is allowed.
   async headers() {
-    return [{ source: "/:path*", headers: [
-      { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "Referrer-Policy", value: "same-origin" },
-      { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
-      { key: "X-Frame-Options", value: "DENY" },
-    ] }];
+    return [{ source: "/:path*", headers: [{ key: "Permissions-Policy", value: "microphone=(self), camera=()" }] }];
+  },
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+        as: "*.css",
+      },
+    },
   },
 };
-export default config;
+
+export default nextConfig;
