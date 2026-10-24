@@ -1,47 +1,93 @@
 @import "tailwindcss";
 
-/* Oomi palette, taken from the product concept: coral shell, navy screen, cream eyes, mint button. */
+/*
+ * Oomi design system: "sticker book".
+ * Colors come from the product render (coral shell, navy screen, cream eyes, mint button),
+ * extended with a few bright crayon accents. Kid surfaces use chunky ink outlines and hard
+ * offset shadows; parent surfaces use the same palette with soft shadows and more air.
+ */
 @theme {
-  --color-coral-50: #fff4ee;
-  --color-coral-100: #ffe3d6;
-  --color-coral-200: #fcc9b3;
-  --color-coral-300: #f7a98a;
-  --color-coral-400: #f08a67;
-  --color-coral-500: #e5704d;
-  --color-coral-600: #c9583a;
-  --color-coral-700: #a3442c;
+  --color-paper: #fff8ee;
+  --color-paper-2: #fdeedb;
+  --color-peach: #ffdcc8;
 
-  --color-navy-700: #2a3156;
-  --color-navy-800: #1d2342;
-  --color-navy-900: #141a33;
-  --color-navy-950: #0d1124;
+  --color-coral-50: #fff3ee;
+  --color-coral-100: #ffe4d9;
+  --color-coral-200: #ffc9b5;
+  --color-coral-300: #ffa98d;
+  --color-coral-400: #fb8766;
+  --color-coral-500: #f26a4b;
+  --color-coral-600: #d9502f;
+  --color-coral-700: #b03d22;
+
+  /* "navy" is the ink of the brand: text, outlines, the necklace screen. */
+  --color-navy-300: #b9bdd6;
+  --color-navy-400: #8a90b5;
+  --color-navy-500: #636a96;
+  --color-navy-600: #474e7a;
+  --color-navy-700: #343a63;
+  --color-navy-800: #252a4d;
+  --color-navy-900: #1b1f3b;
+  --color-navy-950: #11142a;
 
   --color-cream-50: #fffdf8;
-  --color-cream-100: #fdf6ea;
-  --color-cream-200: #f8ecd6;
+  --color-cream-100: #fff8ee;
+  --color-cream-200: #fbecd6;
 
-  --color-mint-100: #dff4ea;
-  --color-mint-200: #bfe7d4;
-  --color-mint-300: #9fd8c0;
-  --color-mint-400: #7cc6a8;
-  --color-mint-500: #57ad8b;
-  --color-mint-700: #2f7a5f;
+  --color-mint-50: #effbf5;
+  --color-mint-100: #dcf5e9;
+  --color-mint-200: #b9ebd5;
+  --color-mint-300: #8fdcbb;
+  --color-mint-400: #5fc89c;
+  --color-mint-500: #36ad7f;
+  --color-mint-600: #248c64;
+  --color-mint-700: #1d6e50;
 
-  --color-sun-300: #ffd27a;
-  --color-sun-400: #ffbf47;
-  --color-sky-300: #9cc8f2;
-  --color-lilac-300: #c9b6f2;
+  --color-sun-100: #fff4cc;
+  --color-sun-200: #ffe79a;
+  --color-sun-300: #ffd866;
+  --color-sun-400: #ffc53d;
+  --color-sun-500: #f5a912;
+
+  --color-sky-100: #e3f3fe;
+  --color-sky-200: #c2e5fc;
+  --color-sky-300: #92d0f8;
+  --color-sky-400: #5bb5f0;
+  --color-sky-500: #2f95dc;
+
+  --color-grape-100: #f0eaff;
+  --color-grape-200: #ddd0fd;
+  --color-grape-300: #c3adf8;
+  --color-grape-400: #a585ef;
+  --color-grape-500: #8460dd;
+
+  --color-bubble-100: #ffe6f0;
+  --color-bubble-200: #ffc8dd;
+  --color-bubble-300: #ffa3c4;
+  --color-bubble-400: #ff7aa8;
+
+  /* Kept for older class names. */
+  --color-lilac-300: #c3adf8;
 
   --font-display: var(--font-fredoka), ui-rounded, system-ui, sans-serif;
   --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
 
-  --shadow-soft: 0 10px 30px -12px rgb(160 70 40 / 0.35);
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 12px 28px -16px rgb(29 35 66 / 0.35);
-  --shadow-pebble: inset -14px -18px 30px rgb(163 68 44 / 0.35), inset 12px 14px 26px rgb(255 255 255 / 0.35),
+  --radius-blob: 2rem;
+
+  /* Kid surfaces: hard "sticker" shadows. */
+  --shadow-sticker: 0 4px 0 0 var(--color-navy-900);
+  --shadow-sticker-lg: 0 7px 0 0 var(--color-navy-900);
+  --shadow-sticker-sm: 0 3px 0 0 var(--color-navy-900);
+  /* Parent surfaces: soft, warm elevation. */
+  --shadow-soft: 0 18px 40px -22px rgb(176 61 34 / 0.35);
+  --shadow-card: 0 1px 2px rgb(27 31 59 / 0.06), 0 14px 32px -20px rgb(27 31 59 / 0.28);
+  --shadow-pebble: inset -14px -18px 30px rgb(176 61 34 / 0.35), inset 12px 14px 26px rgb(255 255 255 / 0.35),
     0 40px 60px -30px rgb(120 50 30 / 0.55);
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-wiggle: wiggle 0.6s ease-in-out;
+  --animate-spin-slow: spin 18s linear infinite;
+  --animate-pop: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 
   @keyframes float {
     0%,
@@ -64,6 +110,50 @@
       transform: rotate(4deg);
     }
   }
+  @keyframes pop {
+    from {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
+
+/* Sticker-book building blocks, shared by every kid-facing surface. */
+@utility sticker {
+  border: 2.5px solid var(--color-navy-900);
+  box-shadow: var(--shadow-sticker);
+}
+
+@utility sticker-lg {
+  border: 3px solid var(--color-navy-900);
+  box-shadow: var(--shadow-sticker-lg);
+}
+
+/* Chunky button that presses down like a real one. */
+@utility btn-chunky {
+  border: 2.5px solid var(--color-navy-900);
+  box-shadow: var(--shadow-sticker);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 0 var(--color-navy-900);
+  }
+  &:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 0 var(--color-navy-900);
+  }
+}
+
+/* Dotted paper texture for kid backgrounds. */
+@utility bg-dots {
+  background-image: radial-gradient(rgb(27 31 59 / 0.09) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
 }
 
 :root {
@@ -71,22 +161,22 @@
 }
 
 html {
-  background: var(--color-cream-100);
+  background: var(--color-paper);
 }
 
 body {
-  background: var(--color-cream-100);
+  background: var(--color-paper);
   color: var(--color-navy-900);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
-  background: var(--color-coral-200);
+  background: var(--color-sun-300);
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-mint-400);
+  outline: 3px solid var(--color-sky-400);
   outline-offset: 3px;
   border-radius: 12px;
 }
