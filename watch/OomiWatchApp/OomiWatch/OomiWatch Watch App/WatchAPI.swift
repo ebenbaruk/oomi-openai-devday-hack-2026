@@ -5,6 +5,8 @@ struct WatchTurn: Decodable {
     let verdict: String
     let state: String
     let text: String
+    let audioBase64: String?
+    let audioMimeType: String?
 }
 
 enum WatchAPIError: LocalizedError {
