@@ -5,7 +5,7 @@ import { useEffect, useId, useState } from "react";
 import type { Face } from "@/lib/contracts";
 
 // Pure SVG on a 200×200 round screen, so the same drawing can be ported to the necklace's display.
-// Shapes follow the expression sheet in public/brand/oomi-expressions.png.
+// One shape per face (SPEC §5.1), drawn so they port to the necklace's round screen.
 
 /** rx/ry: eye size, cy: vertical offset, px/py: pupil offset, pr: pupil radius, lid: share of the eye hidden by the top lid. */
 type OpenEye = { kind: "open"; rx: number; ry: number; cy: number; px: number; py: number; pr: number; lid: number };

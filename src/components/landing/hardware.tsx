@@ -54,22 +54,6 @@ export function Hardware() {
           </ul>
         </Reveal>
       </div>
-
-      <Reveal className="mx-auto mt-14 max-w-4xl">
-        <figure className="sticker overflow-hidden rounded-[32px] bg-cream-50">
-          <Image
-            src="/brand/oomi-expressions.png"
-            alt="Oomi's eight expressions: idle, listening, thinking, speaking, happy, curious, ask a grown-up, sleep"
-            width={1536}
-            height={1024}
-            sizes="(min-width: 896px) 896px, 100vw"
-            className="h-auto w-full"
-          />
-          <figcaption className="border-t-[2.5px] border-navy-900 bg-white px-6 py-4 text-center font-display font-medium text-navy-700">
-            Eight expressions say everything. Kids don&apos;t need to read to understand Oomi.
-          </figcaption>
-        </figure>
-      </Reveal>
     </Section>
   );
 }
