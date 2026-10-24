@@ -49,16 +49,11 @@ struct OomiWatchHome: View {
                     .frame(maxWidth: 145)
                     .lineLimit(2)
 
-                Button(action: {}) {
-                    Label(isHolding ? "J'écoute…" : "Maintenir pour parler", systemImage: isHolding ? "waveform" : "mic.fill")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(PushToTalkStyle(pressed: isHolding))
-                .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { _ in startTalking() }
-                    .onEnded { _ in stopTalking() })
-                .accessibilityHint("Maintenez le bouton, posez une question, puis relâchez")
+                PushToTalkControl(
+                    holding: isHolding,
+                    start: startTalking,
+                    stop: { stopTalking(timedOut: false) }
+                )
             }
             .padding(.horizontal, 14)
         }
@@ -181,17 +176,30 @@ private struct WatchSettings: View {
     }
 }
 
-private struct PushToTalkStyle: ButtonStyle {
-    let pressed: Bool
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+private struct PushToTalkControl: View {
+    let holding: Bool
+    let start: () -> Void
+    let stop: () -> Void
+
+    var body: some View {
+        Label(holding ? "J'écoute…" : "Maintenir pour parler", systemImage: holding ? "waveform" : "mic.fill")
+            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(pressed ? Color(red: 0.94, green: 0.48, blue: 00.36) : Color(red: 0.61, green: 0.78, blue: 00.68))
+            .background(holding ? Color(red: 0.94, green: 0.48, blue: 0.36) : Color(red: 0.61, green: 0.78, blue: 0.68))
             .foregroundStyle(Color(red: 0.08, green: 0.16, blue: 0.17))
             .clipShape(Capsule())
-            .scaleEffect(pressed ? 0.93 : (configuration.isPressed ? 0.96 : 1))
-            .shadow(color: pressed ? Color(red: 0.94, green: 0.48, blue: 00.36).opacity(0.8) : .clear, radius: 9)
-            .animation(.spring(duration: 0.22), value: pressed)
+            .scaleEffect(holding ? 0.93 : 1)
+            .shadow(color: holding ? Color(red: 0.94, green: 0.48, blue: 0.36).opacity(0.8) : .clear, radius: 9)
+            .animation(.spring(duration: 0.22), value: holding)
+            .contentShape(Capsule())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { _ in start() }
+                .onEnded { _ in stop() })
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel("Maintenir pour parler")
+            .accessibilityValue(holding ? "Oomi écoute" : "Prêt")
+            .accessibilityHint("Maintenez, posez une question, puis relâchez")
     }
 }
 
