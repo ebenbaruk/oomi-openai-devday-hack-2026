@@ -1,0 +1,46 @@
+{
+  "name": "oomi",
+  "version": "0.1.0",
+  "private": true,
+  "overrides": { "@vercel/cli-config": { "zod": "$zod" } },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx scripts/serve.ts",
+    "dev:web": "next dev",
+    "build": "next build",
+    "start": "tsx scripts/serve.ts --production",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "eval": "tsx scripts/eval-safety.ts",
+    "eval:live": "tsx scripts/eval-safety.ts --live",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "check": "npm run lint && npm run typecheck && npm test && npm run eval"
+  },
+  "dependencies": {
+    "@next/env": "16.4.3",
+    "@vercel/functions": "3.10.3",
+    "next": "16.4.3",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "ws": "8.22.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/ws": "8.18.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.3",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}
