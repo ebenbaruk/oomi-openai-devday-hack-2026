@@ -27,7 +27,7 @@ export function Simulator({ configured }: { configured: boolean }) {
     return () => { current.close(); device.current = null; window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", release); window.removeEventListener("pointerup", release); document.removeEventListener("visibilitychange", visibility); };
   }, []);
   return <div className="site-shell">
-    <header className="site-header"><Link className="wordmark" href="/" aria-label="Oomi, accueil">oomi<span className="logo-dot" /></Link><span className="header-caption">Pour les petits curieux.</span><span className="prototype-pill"><span /> Le studio Oomi</span></header>
+    <header className="site-header"><Link className="wordmark" href="/" aria-label="Oomi, accueil">oomi<span className="logo-dot" /></Link><span className="header-caption">Pour les petits curieux.</span><Link className="parent-link" href="/parent">Espace parent</Link><span className="prototype-pill"><span /> Le studio Oomi</span></header>
     <main>
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy"><div className="eyebrow"><span /> UN PETIT COMPAGNON D’EXPLORATION</div>
