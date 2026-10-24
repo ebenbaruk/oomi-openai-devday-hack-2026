@@ -33,9 +33,13 @@ struct OomiWatchHome: View {
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.76))
 
-                OomiFace(mood: mood)
-                    .frame(width: 104, height: 104)
-                    .accessibilityLabel("Oomi est \(mood.rawValue.lowercased())")
+                ZStack {
+                    ListeningHalo(active: isHolding)
+                    OomiFace(mood: mood)
+                        .frame(width: 104, height: 104)
+                }
+                .frame(width: 126, height: 112)
+                .accessibilityLabel("Oomi est \(mood.rawValue.lowercased())")
 
                 Text(message)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -45,7 +49,7 @@ struct OomiWatchHome: View {
                     .lineLimit(2)
 
                 Button(action: {}) {
-                    Label(isHolding ? "Parlez…" : "Maintenir pour parler", systemImage: "mic.fill")
+                    Label(isHolding ? "J'écoute…" : "Maintenir pour parler", systemImage: isHolding ? "waveform" : "mic.fill")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
                 }
@@ -77,14 +81,16 @@ struct OomiWatchHome: View {
 
     private func startTalking() {
         guard !isHolding else { return }
+        isHolding = true
+        mood = .listening
+        message = "Je t'écoute. Relâchez pour envoyer."
+        WKInterfaceDevice.current().play(.click)
         Task {
             do {
                 try await recorder.start()
-                isHolding = true
-                mood = .listening
-                message = "Je t'écoute."
-                WKInterfaceDevice.current().play(.click)
+                guard isHolding else { recorder.discard(); return }
             } catch {
+                isHolding = false
                 showProblem(error.localizedDescription)
             }
         }
@@ -93,7 +99,11 @@ struct OomiWatchHome: View {
     private func stopTalking() {
         guard isHolding else { return }
         isHolding = false
-        guard let audioURL = recorder.stop() else { return }
+        guard let audioURL = recorder.stop() else {
+            mood = .resting
+            message = "Maintenez le bouton quand vous êtes prêt."
+            return
+        }
         mood = .thinking
         message = "Je prépare une réponse sûre."
         WKInterfaceDevice.current().play(.directionUp)
@@ -163,7 +173,36 @@ private struct PushToTalkStyle: ButtonStyle {
             .background(pressed ? Color(red: 0.94, green: 0.48, blue: 00.36) : Color(red: 0.61, green: 0.78, blue: 00.68))
             .foregroundStyle(Color(red: 0.08, green: 0.16, blue: 0.17))
             .clipShape(Capsule())
-            .scaleEffect(pressed ? 0.96 : 1)
+            .scaleEffect(pressed ? 0.93 : (configuration.isPressed ? 0.96 : 1))
+            .shadow(color: pressed ? Color(red: 0.94, green: 0.48, blue: 00.36).opacity(0.8) : .clear, radius: 9)
+            .animation(.spring(duration: 0.22), value: pressed)
+    }
+}
+
+private struct ListeningHalo: View {
+    let active: Bool
+    @State private var pulsing = false
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .stroke(Color(red: 0.60, green: 0.78, blue: 0.68).opacity(0.62 - Double(index) * 0.16), lineWidth: 1.5)
+                    .frame(width: 106 + CGFloat(index * 9), height: 106 + CGFloat(index * 9))
+                    .scaleEffect(active && pulsing ? 1.12 : 0.84)
+                    .opacity(active ? 1 : 0)
+            }
+        }
+        .onAppear { updatePulse() }
+        .onChange(of: active) { _, _ in updatePulse() }
+    }
+
+    private func updatePulse() {
+        guard active else { pulsing = false; return }
+        pulsing = false
+        withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
+            pulsing = true
+        }
     }
 }
 
