@@ -124,9 +124,15 @@ export async function handleWatchTurn(request: Request, config: Config): Promise
   if (!pairingCode.success || !(audio instanceof File)) throw new WatchTurnError(400, "Invalid watch request.");
   if (audio.size < 400 || audio.size > maxAudioBytes || !supportedAudio.has(audio.type.toLowerCase())) throw new WatchTurnError(400, "Unsupported audio clip.");
 
-  if (!await allowAttempt(`watch-pair:${ip}`, 12, 900)) throw new WatchTurnError(429, "Too many pairing attempts.");
   const device = await authenticatedDevice(pairingCode.data);
-  if (!device) throw new WatchTurnError(401, "Watch not paired.");
+  if (!device) {
+    // A valid Watch asks a question on every turn. Only invalid codes count as
+    // pairing attempts, otherwise a successful demo locks itself after 12 turns.
+    if (!await allowAttempt(`watch-pair:${ip}`, 12, 900)) {
+      throw new WatchTurnError(429, "Too many pairing attempts. Generate a new code or try again in 15 minutes.");
+    }
+    throw new WatchTurnError(401, "Watch not paired.");
+  }
   await getPool().query("UPDATE watch_devices SET status='paired',last_seen_at=now() WHERE id=$1", [device.id]);
 
   const turnId = randomUUID();
