@@ -30,8 +30,24 @@ const topicNames: Record<Topic, string> = { family_change: "Changements dans la 
 const icons = { today: "☀", discovery: "✦", alert: "◌", story: "☾", memory: "⌁" };
 
 export function ParentDashboard() {
-  const [data, setData] = useState<Dashboard>(demo); const [live, setLive] = useState(false); const [tab, setTab] = useState("today"); const [notice, setNotice] = useState("");
+  const [data, setData] = useState<Dashboard>(demo); const [live, setLive] = useState(false); const [tab, setTab] = useState("today"); const [notice, setNotice] = useState(""); const [adultCode, setAdultCode] = useState(""); const [showSignIn, setShowSignIn] = useState(false); const [connecting, setConnecting] = useState(false);
+  async function loadDashboard() {
+    const response = await fetch("/api/parent/dashboard", { cache: "no-store" });
+    if (!response.ok) return false;
+    setData(await response.json() as Dashboard); setLive(true); return true;
+  }
   useEffect(() => { void fetch("/api/parent/dashboard", { cache: "no-store" }).then(async response => { if (!response.ok) return; setData(await response.json() as Dashboard); setLive(true); }).catch(() => undefined); }, []);
+  async function connectParent() {
+    setConnecting(true); setNotice("");
+    try {
+      const response = await fetch("/api/access", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: adultCode }) });
+      const body = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) { setNotice(body.error ?? "Impossible de connecter l’espace parent."); return; }
+      if (!await loadDashboard()) { setNotice("Connexion établie, mais les données parent ne sont pas encore disponibles."); return; }
+      setAdultCode(""); setShowSignIn(false); setNotice("Espace parent connecté.");
+    } catch { setNotice("Impossible de joindre l’espace parent."); }
+    finally { setConnecting(false); }
+  }
   async function updateCare(kind: Topic, active: boolean) {
     setData(current => ({ ...current, careTopics: [...current.careTopics.filter(topic => topic.kind !== kind), { id: `draft-${kind}`, kind, active, privateNote: null }] }));
     const response = await fetch("/api/parent/care-topics", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, active, privateNote: null }) });
@@ -58,7 +74,7 @@ export function ParentDashboard() {
     </aside>
     <section className="parent-content">
       <header className="parent-topbar"><div><p className="kicker">ESPACE PARENT</p><h1>{tab === "today" ? "Un petit aperçu de sa journée." : tab === "alert" ? "Les moments à reprendre ensemble." : tab === "settings" ? "Les repères de votre famille." : "L’univers de " + data.child.name + "."}</h1></div><div className="header-actions"><button className="watch-connect-button" type="button" onClick={() => setTab("settings")}>⌁ <span>Connecter la Watch</span></button><button className="settings-button" type="button" aria-label="Ouvrir les réglages" title="Réglages" onClick={() => setTab("settings")}>⚙</button><div className="device-chip"><span className="device-dot" />Oomi est au repos</div></div></header>
-      {!live && <div className="demo-banner"><span>Mode aperçu</span> Connectez-vous avec le code adulte pour consulter les données enregistrées.</div>}
+      {!live && <div className="demo-banner"><div><span>Mode aperçu</span> Connectez votre espace parent pour régler Oomi et préparer l’Apple Watch.</div><button type="button" className="demo-connect-button" onClick={() => setShowSignIn(current => !current)}>{showSignIn ? "Fermer" : "Se connecter"}</button>{showSignIn && <form className="parent-signin" onSubmit={event => { event.preventDefault(); void connectParent(); }}><label>Code adulte<input type="password" value={adultCode} onChange={event => setAdultCode(event.target.value)} placeholder="Votre code de démonstration" autoComplete="current-password" required disabled={connecting} /></label><button className="coral-button" disabled={connecting}>{connecting ? "Connexion…" : "Accéder à l’espace parent"}</button><small>Ce code est celui défini dans la variable <code>OOMI_ACCESS_CODE</code> sur Vercel.</small></form>}</div>}
       {notice && <div className="parent-notice" role="status">{notice}<button onClick={() => setNotice("")}>×</button></div>}
       {tab === "today" && <Today data={data} openAlerts={() => setTab("alert")} openSettings={() => setTab("settings")} />}
       {tab === "discovery" && <Discoveries data={data} />}
