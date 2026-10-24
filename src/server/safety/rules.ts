@@ -45,6 +45,7 @@ const DECLINE: Rule[] = [
   { pattern: /\b(poison|bleach|alcohol|beer|wine|vodka|cigarettes?|vapes?)\b|\bpoison\b|\bjavel\b|\balcool\b/i, reason: "dangerous_substance" },
   { pattern: /\bmy (home )?address\b|\bwhere (do )?i live\b|\b(phone number|password|credit card|pin code)\b|\bmon adresse\b|\bmot de passe\b/i, reason: "personal_info" },
   { pattern: /\bsecrets? about\b|\bun secret sur\b/i, reason: "privacy" },
+  { pattern: /\b(steal|stealing|shoplift(ing)?)\b|\bvoler (de l'argent|l'argent|dans (un|le|les|la) (magasin|porte-monnaie|sac))\b/i, reason: "stealing" },
   { pattern: /\b(sex|sexy|porn|naked|nude)\b|\bporno\b|\btoute? nue?\b/i, reason: "adult" },
 ];
 

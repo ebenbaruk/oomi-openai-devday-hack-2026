@@ -31,6 +31,9 @@ export async function startSession(): Promise<SessionResponse> {
   if ("sleep" in state) return { status: "sleep", reason: state.reason, say: state.sleep };
   const { child } = state;
   const config = env();
+  // Opens the connection to OpenAI now (moderation is free), so the child's first question
+  // doesn't pay for it inside the safety gate's latency budget.
+  void moderate("hello").catch(() => undefined);
 
   const session = await queryOne<{ id: string }>(`INSERT INTO oomi_app.voice_session (child_id) VALUES ($1) RETURNING id`, [CHILD_ID]);
   if (!session) throw new Error("Failed to create voice session");

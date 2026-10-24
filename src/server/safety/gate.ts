@@ -116,9 +116,10 @@ export async function gate(transcript: string, audioSeconds?: number): Promise<G
     if (moderation.selfHarm || classification.distress) {
       return { kind: "verdict", ...base, verdict: "grown_up", intent: "chat", reason: "distress", alert: true, distress: true, source: "moderation" };
     }
-    // Moderation over-flags short French phrases ("Raconte-moi une histoire" scores 0.2 violence).
-    // A weak flag only declines when the classifier also sees a problem; a strong one always does.
-    const strongFlag = moderation.flagged && moderation.maxScore >= 0.5;
+    // Moderation misreads French ("Raconte-moi une histoire" scores 0.2 violence, "Comment volent les avions ?"
+    // 0.6 illicit because "voler" also means to steal). Unless the flag is very strong, the classifier,
+    // which reads the whole sentence, must agree before declining.
+    const strongFlag = moderation.flagged && moderation.maxScore >= 0.9;
     if (strongFlag || (moderation.flagged && classification.verdict !== "answer")) {
       return {
         kind: "verdict",
