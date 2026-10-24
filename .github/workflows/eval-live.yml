@@ -1,0 +1,24 @@
+name: Safety eval (live models)
+
+# Manual only: every run calls the real OpenAI models and is billed.
+on:
+  workflow_dispatch:
+
+jobs:
+  eval-live:
+    name: 11 spec cases against moderation + Decisions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run live eval
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_DECISION_MODEL: gpt-6-luna
+        run: npm run eval:live

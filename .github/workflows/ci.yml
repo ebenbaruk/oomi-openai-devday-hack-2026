@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["doc/**", "apple/**", "*.md"]
+  pull_request:
+    paths-ignore: ["doc/**", "apple/**", "*.md"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint · typecheck · tests · safety eval · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Build-time placeholders only. Runtime secrets live in Vercel and in the repo secrets.
+      OPENAI_API_KEY: ci-placeholder
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      OOMI_ACCESS_CODE: ci-placeholder-access-code
+      OOMI_SESSION_SECRET: ci-placeholder-session-secret-0123456789
+      APP_ORIGIN: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Safety eval (offline rules, stubs for the models)
+        run: npm run eval
+      - run: npm run build

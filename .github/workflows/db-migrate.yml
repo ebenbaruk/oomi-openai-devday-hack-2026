@@ -1,0 +1,29 @@
+name: Database migrations
+
+on:
+  push:
+    branches: [main]
+    paths: ["db/migrations/**", "scripts/migrate.ts"]
+  workflow_dispatch:
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply db/migrations to Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run migrations (session pooler, port 5432)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_MIGRATE }}
+        run: npm run db:migrate

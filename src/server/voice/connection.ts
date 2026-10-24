@@ -67,7 +67,7 @@ export function attachDevice(socket: WebSocket, config: Config) {
       method: "POST", headers: { Authorization: `Bearer ${config.OPENAI_API_KEY}` }, body,
       signal: AbortSignal.any([abort.signal, AbortSignal.timeout(12_000)]),
     });
-    if (!call.ok) throw new Error(`Call HTTP ${call.status}`);
+    if (!call.ok) throw new Error(`Call HTTP ${call.status}: ${(await call.text()).slice(0, 300)}`);
     callId = call.headers.get("location")?.split("/").pop() ?? "";
     if (!/^rtc_[a-zA-Z0-9_-]+$/.test(callId)) throw new Error("Missing call ID");
     const answer = await call.text();
@@ -126,7 +126,7 @@ export function attachDevice(socket: WebSocket, config: Config) {
       lastPing = Date.now();
       const event = parsed.data;
       switch (event.type) {
-        case "connect": void connect(event.sdp).catch(() => cleanup("Impossible d’ouvrir la session. Vérifiez les accès API, la base et les modèles configurés.")); break;
+        case "connect": void connect(event.sdp).catch(error => { console.error("voice connect failed:", error instanceof Error ? error.message : String(error)); return cleanup("Impossible d’ouvrir la session. Vérifiez les accès API, la base et les modèles configurés."); }); break;
         case "press": controller?.press(); break;
         case "release": controller?.release(); break;
         case "audio.prepared": controller?.prepared(event.turnId); break;

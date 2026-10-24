@@ -1,0 +1,51 @@
+# XcodeGen spec. Generate the Xcode project with: `brew install xcodegen && cd apple && xcodegen generate`
+# The generated OomiWatch.xcodeproj is not committed.
+name: OomiWatch
+options:
+  bundleIdPrefix: app.oomi
+  deploymentTarget:
+    watchOS: "10.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  OomiWatch:
+    type: application
+    platform: watchOS
+    sources: [OomiWatch]
+    info:
+      path: OomiWatch/Info.plist
+      properties:
+        CFBundleDisplayName: Oomi
+        WKApplication: true
+        WKWatchOnly: true
+        NSMicrophoneUsageDescription: Oomi listens only while you hold the button, to hear your question.
+        UIBackgroundModes: [audio]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.oomi.watch
+        TARGETED_DEVICE_FAMILY: "4"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+  OomiWatchTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources: [OomiWatchTests]
+    dependencies:
+      - target: OomiWatch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.oomi.watch.tests
+schemes:
+  OomiWatch:
+    build:
+      targets:
+        OomiWatch: all
+        OomiWatchTests: [test]
+    test:
+      targets: [OomiWatchTests]
