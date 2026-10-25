@@ -46,7 +46,7 @@ export function SettingsView({
 
 type Pairing = { pairingCode: string; expiresAt: string };
 
-/** A short-lived code keeps the Watch setup simple for a hackathon demo without exposing the adult access code. */
+/** A short-lived code starts a secure Watch pairing without exposing the adult access code. */
 function WatchPairingCard() {
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
@@ -70,7 +70,7 @@ function WatchPairingCard() {
         <div>
           <p className="text-xs font-extrabold tracking-[0.14em] text-mint-200 uppercase">Apple Watch</p>
           <h2 id="watch-pairing-title" className="mt-1 font-display text-xl font-semibold">Connect Oomi</h2>
-          <p className="mt-1 text-sm leading-relaxed text-cream-100/75">Create a one-time code, then enter it with this site address in the Oomi Watch app.</p>
+          <p className="mt-1 text-sm leading-relaxed text-cream-100/75">Create a one-time code, then enter it in the Oomi Watch app. The Oomi server is already configured.</p>
         </div>
       </div>
 
@@ -78,7 +78,7 @@ function WatchPairingCard() {
         <div className="mt-5 rounded-2xl bg-white/10 p-4">
           <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Code for this Watch</p>
           <p className="mt-1 font-mono text-4xl font-bold tracking-[0.24em] text-white">{pairing.pairingCode}</p>
-          <p className="mt-3 text-xs leading-relaxed text-cream-100/75">On the Watch: open ⚙, paste <strong className="font-semibold text-white">{typeof window === "undefined" ? "your deployed Oomi address" : window.location.origin}</strong>, then enter this code. It expires in 15 minutes.</p>
+          <p className="mt-3 text-xs leading-relaxed text-cream-100/75">On the Watch: open ⚙, enter this code, then tap <strong className="font-semibold text-white">Enregistrer la connexion</strong>. The Watch saves its secure connection automatically. This code expires in 15 minutes.</p>
         </div>
       ) : (
         <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-5 rounded-full bg-mint-300 px-5 py-2.5 font-bold text-navy-950 transition hover:bg-mint-200 disabled:opacity-60">
