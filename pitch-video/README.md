@@ -53,6 +53,8 @@ npx remotion studio src/index.ts            # preview in the browser
 npx remotion render src/index.ts OomiLaunch ../output/oomi-launch-film.mp4 --crf=18
 ```
 
+The team images in the repo README (`doc/readme/team*.jpg`) are stills from `film/src/Stills.tsx`: `npx remotion still src/index.ts ReadmeTeam out.png --frame=60`, or `ReadmeTeamCard --props='{"kid":0}'` for one portrait.
+
 To try another narrator voice, change `"voice"` on the `n..` lines. Test samples of 8 voices are in `audio/vo/tests/`.
 
 ## Credits (required: the music is CC BY 3.0)
