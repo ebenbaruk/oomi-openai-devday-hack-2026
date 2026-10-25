@@ -356,7 +356,7 @@ function SaveBar({ draft, dirty, save, name, onSave }: { draft: MascotConfig; di
       : save === "error"
         ? "Couldn't save. Check the name and try again."
         : save === "saved" && !dirty
-          ? `Saved! ${name} is ready for the next chat.`
+          ? `Saved! ${name} will update on the Watch when it opens or listens next.`
           : dirty
             ? "Unsaved changes"
             : "All changes saved";

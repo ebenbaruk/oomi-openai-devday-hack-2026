@@ -283,6 +283,19 @@ export const CreateExplainerRequest = z.object({ discoveryId: z.uuid() });
 
 // ---------- Apple Watch ----------
 
+/** A compact, private copy of the family mascot sent to its paired Watch. */
+export const WatchMascot = z.object({
+  config: MascotConfig,
+  portrait: z.object({ mime: z.string().min(1), base64: z.string().min(1) }).nullable(),
+});
+export type WatchMascot = z.infer<typeof WatchMascot>;
+
+export const WatchProfileResponse = z.object({
+  childName: z.string().min(1),
+  mascot: WatchMascot,
+});
+export type WatchProfileResponse = z.infer<typeof WatchProfileResponse>;
+
 /** Result returned to the watch after a recorded push-to-talk turn. */
 export const WatchTurnResponse = z.object({
   turnId: z.string().min(1),
@@ -291,5 +304,6 @@ export const WatchTurnResponse = z.object({
   text: z.string().min(1).max(1000),
   audioBase64: z.string().optional(),
   audioMimeType: z.string().optional(),
+  mascot: WatchMascot,
 });
 export type WatchTurnResponse = z.infer<typeof WatchTurnResponse>;

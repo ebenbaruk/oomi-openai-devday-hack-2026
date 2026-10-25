@@ -1,9 +1,10 @@
 import "server-only";
 import { createHash, randomInt } from "node:crypto";
 import { z } from "zod";
-import type { Language, WatchTurnResponse } from "@/lib/contracts";
+import type { Language, WatchMascot, WatchProfileResponse, WatchTurnResponse } from "@/lib/contracts";
 import { CHILD_ID, query, queryOne } from "./db";
 import { loadChild } from "./child";
+import { loadMascot } from "./mascot";
 import { transcribe, synthesize, writeReply } from "./speech";
 import { checkAnswer, decideTurn } from "./turn";
 
@@ -41,11 +42,34 @@ async function verifyPairing(code: string): Promise<void> {
   await query(`UPDATE oomi_app.watch_device SET paired_at = coalesce(paired_at, now()), last_seen_at = now() WHERE id = $1`, [device.id]);
 }
 
+/** The Watch has no parent cookie. Its short device code grants this deliberately narrow profile. */
+async function loadWatchMascot(): Promise<WatchMascot> {
+  const mascot = await loadMascot();
+  if (!mascot.config.portraitId) return { config: mascot.config, portrait: null };
+  const portrait = await queryOne<{ mime: string; data: Buffer }>(
+    `SELECT image.mime, image.data
+     FROM oomi_app.mascot_portrait portrait
+     JOIN oomi_app.image image ON image.id = portrait.image_id
+     WHERE portrait.id = $1 AND portrait.child_id = $2`,
+    [mascot.config.portraitId, CHILD_ID],
+  );
+  return {
+    config: mascot.config,
+    portrait: portrait ? { mime: portrait.mime, base64: portrait.data.toString("base64") } : null,
+  };
+}
+
+export async function loadWatchProfile(pairingCode: string): Promise<WatchProfileResponse> {
+  await verifyPairing(pairingCode);
+  const child = await loadChild();
+  return { childName: child.firstName, mascot: await loadWatchMascot() };
+}
+
 function toState(verdict: WatchTurnResponse["verdict"]): WatchTurnResponse["state"] {
   return verdict === "answer" ? "happy" : verdict;
 }
 
-async function withAudio(turnId: string, verdict: WatchTurnResponse["verdict"], text: string, language: Language, voice: string): Promise<WatchTurnResponse> {
+async function withAudio(turnId: string, verdict: WatchTurnResponse["verdict"], text: string, language: Language, voice: string, mascot: WatchMascot): Promise<WatchTurnResponse> {
   const audio = await synthesize(text, "playful", language, voice);
   const bytes = Buffer.from(await audio.arrayBuffer());
   return {
@@ -55,6 +79,7 @@ async function withAudio(turnId: string, verdict: WatchTurnResponse["verdict"], 
     text,
     audioBase64: bytes.toString("base64"),
     audioMimeType: "audio/mpeg",
+    mascot,
   };
 }
 
@@ -70,7 +95,7 @@ export async function handleWatchTurn(request: Request): Promise<WatchTurnRespon
   }
   await verifyPairing(pairingCode.data);
 
-  const child = await loadChild();
+  const [child, mascot] = await Promise.all([loadChild(), loadWatchMascot()]);
   const session = await queryOne<{ id: string }>(`INSERT INTO oomi_app.voice_session (child_id) VALUES ($1) RETURNING id`, [CHILD_ID]);
   if (!session) throw new Error("Unable to start Watch session");
   try {
@@ -78,12 +103,12 @@ export async function handleWatchTurn(request: Request): Promise<WatchTurnRespon
     const gate = await decideTurn(session.id, transcript);
     if (gate.action === "ignore") throw new WatchError(400, "Je n'ai pas bien entendu. Réessaie en parlant un peu plus près.");
     const fallback = child.language === "fr" ? "Oups, mon cerveau d'explorateur s'est emmêlé ! Tu peux me reposer la question ?" : "Oops, can you ask me again?";
-    if (gate.action === "sleep") return withAudio(`sleep:${crypto.randomUUID()}`, "decline", gate.say, child.language, child.mascot.voice);
-    if (gate.action === "story") return withAudio(gate.turnId, "answer", gate.say, gate.language, child.mascot.voice);
+    if (gate.action === "sleep") return withAudio(`sleep:${crypto.randomUUID()}`, "decline", gate.say, child.language, child.mascot.voice, mascot);
+    if (gate.action === "story") return withAudio(gate.turnId, "answer", gate.say, gate.language, child.mascot.voice, mascot);
 
     const draft = gate.exactText ?? await writeReply(transcript, gate.instructions);
     const checked = await checkAnswer(draft, gate.language);
-    return withAudio(gate.turnId, checked.safe ? gate.verdict : "decline", checked.safe ? draft : (checked.replacement ?? fallback), gate.language, child.mascot.voice);
+    return withAudio(gate.turnId, checked.safe ? gate.verdict : "decline", checked.safe ? draft : (checked.replacement ?? fallback), gate.language, child.mascot.voice, mascot);
   } finally {
     await query(`DELETE FROM oomi_app.voice_session WHERE id = $1`, [session.id]).catch(() => undefined);
   }

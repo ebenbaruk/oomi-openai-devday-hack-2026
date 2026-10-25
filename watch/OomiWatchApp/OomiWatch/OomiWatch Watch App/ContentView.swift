@@ -2,6 +2,7 @@ import SwiftUI
 import WatchKit
 import AVFoundation
 import Combine
+import UIKit
 
 enum OomiMood: String, CaseIterable, Identifiable {
     case resting = "Au repos", listening = "J'écoute", thinking = "Je réfléchis", speaking = "Je raconte", happy = "Bravo", grownUp = "Parlons-en", declined = "Restons en sécurité", problem = "Un instant"
@@ -13,6 +14,7 @@ struct OomiWatchHome: View {
     @State private var message = "Une grande découverte commence par une petite question."
     @State private var captureTimeoutTask: Task<Void, Never>?
     @State private var showingSettings = false
+    @State private var mascot = WatchMascot.cached()
     @AppStorage("oomiServerURL") private var serverURL = ""
     @AppStorage("oomiPairingCode") private var pairingCode = ""
     @StateObject private var recorder = WatchAudioRecorder()
@@ -20,10 +22,10 @@ struct OomiWatchHome: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color(hex: mascot.config.backgroundColor).ignoresSafeArea()
             VStack(spacing: 7) {
                 HStack(spacing: 5) {
-                    Text(mood == .resting ? "oomi" : mood.rawValue)
+                    Text(mood == .resting ? mascot.config.name.lowercased() : mood.rawValue)
                     Button { showingSettings = true } label: {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 10, weight: .bold))
@@ -36,7 +38,7 @@ struct OomiWatchHome: View {
 
                 ZStack {
                     ListeningHalo(active: isHolding)
-                    OomiFace(mood: mood)
+                    OomiFace(mood: mood, mascot: mascot)
                         .frame(width: 104, height: 104)
                 }
                 .frame(width: 126, height: 112)
@@ -58,8 +60,9 @@ struct OomiWatchHome: View {
             .padding(.horizontal, 14)
         }
         .onAppear { WKInterfaceDevice.current().play(.start) }
+        .task(id: "\(serverURL)|\(pairingCode)") { await refreshMascot() }
         .sheet(isPresented: $showingSettings) {
-            WatchSettings(serverURL: $serverURL, pairingCode: $pairingCode)
+            WatchSettings(serverURL: $serverURL, pairingCode: $pairingCode, refreshMascot: refreshMascot)
         }
         #if DEBUG
         .safeAreaInset(edge: .bottom) {
@@ -124,6 +127,8 @@ struct OomiWatchHome: View {
     }
 
     private func show(_ turn: WatchTurn) {
+        mascot = turn.mascot
+        mascot.cache()
         message = turn.text
         mood = switch turn.state {
         case "happy": .happy
@@ -144,6 +149,17 @@ struct OomiWatchHome: View {
         mood = .problem
         message = text
         WKInterfaceDevice.current().play(.failure)
+    }
+
+    private func refreshMascot() async {
+        guard !serverURL.isEmpty, pairingCode.filter(\.isNumber).count == 6 else { return }
+        do {
+            let profile = try await WatchAPI().profile(serverURL: serverURL, pairingCode: pairingCode)
+            mascot = profile.mascot
+            mascot.cache()
+        } catch {
+            // The existing cached identity stays visible when the Watch is offline.
+        }
     }
 }
 
@@ -167,6 +183,7 @@ private struct WatchSettings: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draftServerURL = ""
     @State private var draftPairingCode = ""
+    let refreshMascot: () async -> Void
 
     var body: some View {
         Form {
@@ -185,6 +202,7 @@ private struct WatchSettings: View {
                 serverURL = canonicalServerURL(draftServerURL)
                 pairingCode = draftPairingCode.filter(\.isNumber)
                 dismiss()
+                Task { await refreshMascot() }
             }
             .disabled(!canSave)
         }
@@ -265,36 +283,135 @@ private struct ListeningHalo: View {
 
 struct OomiFace: View {
     let mood: OomiMood
+    let mascot: WatchMascot
+
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 42, style: .continuous)
-                .fill(Color(red: 0.95, green: 0.48, blue: 00.36))
-                .overlay(alignment: .top) { Capsule().fill(Color(red: 0.95, green: 0.48, blue: 00.36)).frame(width: 22, height: 15).offset(y: -7) }
-            RoundedRectangle(cornerRadius: 31, style: .continuous)
-                .fill(Color(red: 0.06, green: 0.12, blue: 0.20))
-                .frame(width: 76, height: 59)
+            if mood == .resting, let image = portraitImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 100, height: 100)
+                    .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
+            } else {
+                MascotBody(species: mascot.config.species, color: Color(hex: mascot.config.bodyColor))
+                RoundedRectangle(cornerRadius: 31, style: .continuous)
+                    .fill(Color(red: 0.06, green: 0.12, blue: 0.20))
+                    .frame(width: 76, height: 59)
+                    .offset(y: -9)
+                HStack(spacing: mood == .thinking ? 17 : 21) {
+                    MascotEye(style: mascot.config.eyes, mood: mood, right: false)
+                    MascotEye(style: mascot.config.eyes, mood: mood, right: true)
+                }
                 .offset(y: -9)
-            HStack(spacing: mood == .thinking ? 17 : 21) {
-                OomiEye(mood: mood, right: false)
-                OomiEye(mood: mood, right: true)
+                if mascot.config.cheeks {
+                    HStack(spacing: 42) {
+                        Circle().fill(Color.white.opacity(0.28)).frame(width: 10, height: 6)
+                        Circle().fill(Color.white.opacity(0.28)).frame(width: 10, height: 6)
+                    }
+                    .offset(y: 13)
+                }
+                MascotMouth(style: mascot.config.mouth, mood: mood)
+                    .offset(y: 14)
+                Circle().fill(Color(hex: mascot.config.accentColor)).frame(width: 26, height: 26).offset(y: 31)
+                MascotAccessory(style: mascot.config.accessory, color: Color(hex: mascot.config.accentColor))
             }
-            .offset(y: -9)
-            Circle().fill(Color(red: 0.60, green: 0.78, blue: 00.68)).frame(width: 26, height: 26).offset(y: 31)
-            Circle().fill(mood == .listening ? .green : .clear).frame(width: 4, height: 4).offset(x: 29, y: 31)
+            Circle().fill(mood == .listening ? .green : .clear).frame(width: 4, height: 4).offset(x: 35, y: 35)
         }
         .shadow(color: .black.opacity(0.28), radius: 7, y: 5)
         .animation(.spring(duration: 0.3), value: mood)
     }
+
+    private var portraitImage: UIImage? {
+        guard let portrait = mascot.portrait, let data = Data(base64Encoded: portrait.base64) else { return nil }
+        return UIImage(data: data)
+    }
 }
 
-private struct OomiEye: View {
-    let mood: OomiMood; let right: Bool
+private struct MascotBody: View {
+    let species: String
+    let color: Color
+
     var body: some View {
-        Capsule()
-            .fill(Color(red: 1, green: 0.97, blue: 0.83))
-            .frame(width: mood == .happy ? 17 : 15, height: eyeHeight)
-            .overlay(Circle().fill(Color(red: 0.06, green: 0.12, blue: 0.20)).frame(width: 6, height: 6).offset(x: right ? 2 : -2, y: mood == .thinking ? -2 : 1))
-            .rotationEffect(mood == .happy ? .degrees(right ? 14 : -14) : .zero)
+        ZStack {
+            RoundedRectangle(cornerRadius: species == "robot" ? 23 : 42, style: .continuous).fill(color)
+            if species == "cat" || species == "bear" {
+                HStack(spacing: 42) { Circle().fill(color).frame(width: 29, height: 29); Circle().fill(color).frame(width: 29, height: 29) }
+                    .offset(y: -41)
+            }
+            if species == "bunny" {
+                HStack(spacing: 28) { Capsule().fill(color).frame(width: 18, height: 46); Capsule().fill(color).frame(width: 18, height: 46) }
+                    .offset(y: -50)
+            }
+            if species == "frog" || species == "octopus" {
+                HStack(spacing: 37) { Circle().fill(color).frame(width: 25, height: 25); Circle().fill(color).frame(width: 25, height: 25) }
+                    .offset(y: -34)
+            }
+            if species == "cloud" { Circle().fill(color).frame(width: 57, height: 57).offset(x: -26, y: 8) }
+            if species == "ghost" { Capsule().fill(color).frame(width: 92, height: 81).offset(y: 8) }
+        }
+        .frame(width: 100, height: 100)
     }
-    private var eyeHeight: CGFloat { switch mood { case .thinking: 19; case .happy: 10; case .listening: 29; default: 25 } }
+}
+
+private struct MascotEye: View {
+    let style: String
+    let mood: OomiMood
+    let right: Bool
+
+    var body: some View {
+        Group {
+            if style == "sleepy" {
+                Capsule().fill(Color(red: 1, green: 0.97, blue: 0.83)).frame(width: 16, height: 4)
+            } else if style == "sparkle" {
+                Image(systemName: "sparkle").font(.system(size: 18, weight: .bold)).foregroundStyle(Color(red: 1, green: 0.97, blue: 0.83))
+            } else {
+                Capsule()
+                    .fill(Color(red: 1, green: 0.97, blue: 0.83))
+                    .frame(width: style == "dots" ? 11 : (mood == .happy ? 17 : 15), height: style == "dots" ? 11 : eyeHeight)
+                    .overlay(Circle().fill(Color(red: 0.06, green: 0.12, blue: 0.20)).frame(width: 6, height: 6).offset(x: right ? 2 : -2, y: mood == .thinking ? -2 : 1))
+            }
+        }
+        .rotationEffect(mood == .happy ? .degrees(right ? 14 : -14) : .zero)
+    }
+
+    private var eyeHeight: CGFloat { switch mood { case .thinking: 19; case .happy: 10; case .listening: 29; default: style == "ovals" ? 29 : 25 } }
+}
+
+private struct MascotMouth: View {
+    let style: String
+    let mood: OomiMood
+    var body: some View {
+        Group {
+            if style == "open" || mood == .speaking { Circle().fill(Color(red: 0.06, green: 0.12, blue: 0.20)).frame(width: 11, height: 15) }
+            else if style == "smile" { Capsule().stroke(Color(red: 0.06, green: 0.12, blue: 0.20), lineWidth: 2).frame(width: 18, height: 8).clipShape(Rectangle().offset(y: -4)) }
+            else if style == "cat" { Text("ᴗ").font(.system(size: 18, weight: .bold)).foregroundStyle(Color(red: 0.06, green: 0.12, blue: 0.20)) }
+        }
+    }
+}
+
+private struct MascotAccessory: View {
+    let style: String
+    let color: Color
+    var body: some View {
+        Group {
+            switch style {
+            case "cap": Capsule().fill(color).frame(width: 44, height: 12).offset(y: -45)
+            case "bow": Image(systemName: "bowtie.fill").font(.system(size: 17)).foregroundStyle(color).offset(y: -41)
+            case "crown": Image(systemName: "crown.fill").font(.system(size: 19)).foregroundStyle(color).offset(y: -49)
+            case "glasses": Image(systemName: "eyeglasses").font(.system(size: 31, weight: .bold)).foregroundStyle(color).offset(y: -10)
+            case "headphones": Image(systemName: "headphones").font(.system(size: 42)).foregroundStyle(color)
+            case "leaf": Image(systemName: "leaf.fill").font(.system(size: 18)).foregroundStyle(color).offset(x: 31, y: -34)
+            case "scarf": Capsule().fill(color).frame(width: 68, height: 9).offset(y: 42)
+            default: EmptyView()
+            }
+        }
+    }
+}
+
+private extension Color {
+    init(hex: String) {
+        let value = UInt64(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0x1b1f3b
+        self.init(.sRGB, red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255, opacity: 1)
+    }
 }

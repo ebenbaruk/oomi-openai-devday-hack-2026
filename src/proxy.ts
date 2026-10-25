@@ -4,7 +4,7 @@ import { ACCESS_COOKIE, ACCESS_HEADER, accessToken, safeEqual } from "@/lib/acce
 /** Everything except the unlock flow sits behind the team access code (it spends OpenAI credits). */
 export async function proxy(request: NextRequest) {
   // The landing page is public: it is what the jury and visitors see first.
-  if (request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/api/watch/turn") return NextResponse.next();
+  if (request.nextUrl.pathname === "/" || request.nextUrl.pathname === "/api/watch/turn" || request.nextUrl.pathname === "/api/watch/profile") return NextResponse.next();
 
   const code = process.env.OOMI_ACCESS_CODE;
   const secret = process.env.OOMI_SESSION_SECRET;
