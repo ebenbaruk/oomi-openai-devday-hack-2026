@@ -8,6 +8,9 @@ enum OomiMood: String, CaseIterable, Identifiable {
     case resting = "Au repos", listening = "J'écoute", thinking = "Je réfléchis", speaking = "Je raconte", happy = "Bravo", grownUp = "Parlons-en", declined = "Restons en sécurité", problem = "Un instant"
     var id: String { rawValue }
 }
+
+private let defaultOomiServerURL = "https://oomi-openai-devday-hack-2026-git-feat-pare-eb0c0c-akramedn-3275.vercel.app"
+
 struct OomiWatchHome: View {
     @State private var mood: OomiMood = .resting
     @State private var isHolding = false
@@ -15,7 +18,7 @@ struct OomiWatchHome: View {
     @State private var captureTimeoutTask: Task<Void, Never>?
     @State private var showingSettings = false
     @State private var mascot = WatchMascot.cached()
-    @AppStorage("oomiServerURL") private var serverURL = ""
+    @AppStorage("oomiServerURL") private var serverURL = defaultOomiServerURL
     @AppStorage("oomiPairingCode") private var pairingCode = ""
     @StateObject private var recorder = WatchAudioRecorder()
     @StateObject private var feedback = WatchFeedback()
@@ -190,7 +193,7 @@ private struct WatchSettings: View {
             Section("Serveur Oomi") {
                 TextField("https://oomi.vercel.app", text: $draftServerURL)
                 .textInputAutocapitalization(.never)
-                Text("Vous pouvez aussi coller le lien du dashboard : Oomi utilisera automatiquement le bon serveur.")
+                Text("L'adresse de démo est déjà configurée. Vous pouvez la changer si nécessaire.")
                     .font(.footnote)
             }
             Section("Code de jumelage") {
@@ -208,7 +211,7 @@ private struct WatchSettings: View {
         }
         .navigationTitle("Connexion")
         .onAppear {
-            draftServerURL = serverURL
+            draftServerURL = serverURL.isEmpty ? defaultOomiServerURL : serverURL
             draftPairingCode = pairingCode
         }
     }
