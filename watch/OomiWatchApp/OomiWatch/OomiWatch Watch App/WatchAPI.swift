@@ -10,13 +10,15 @@ struct WatchTurn: Decodable {
 }
 
 enum WatchAPIError: LocalizedError {
-    case configuration
+    case serverURLRequired
+    case pairingCodeRequired
     case server(String)
     case invalidResponse
 
     var errorDescription: String? {
         switch self {
-        case .configuration: "Ajoute l'adresse sécurisée d'Oomi et le code d'association."
+        case .serverURLRequired: "Ajoute l'adresse sécurisée d'Oomi dans les réglages."
+        case .pairingCodeRequired: "Ajoute le code à 6 chiffres créé dans le dashboard parent."
         case .server(let message): message
         case .invalidResponse: "Oomi n'a pas pu répondre pour le moment."
         }
@@ -25,9 +27,14 @@ enum WatchAPIError: LocalizedError {
 
 struct WatchAPI {
     func send(audioURL: URL, serverURL: String, pairingCode: String) async throws -> WatchTurn {
-        guard pairingCode.range(of: "^[0-9]{6}$", options: .regularExpression) != nil,
-              let base = URL(string: serverURL.trimmingCharacters(in: .whitespacesAndNewlines)),
-              base.scheme == "https" else { throw WatchAPIError.configuration }
+        let code = pairingCode.filter(\.isNumber)
+        guard code.range(of: "^[0-9]{6}$", options: .regularExpression) != nil else { throw WatchAPIError.pairingCodeRequired }
+        guard var components = URLComponents(string: serverURL.trimmingCharacters(in: .whitespacesAndNewlines)),
+              components.scheme == "https", components.host != nil else { throw WatchAPIError.serverURLRequired }
+        components.path = ""
+        components.query = nil
+        components.fragment = nil
+        guard let base = components.url else { throw WatchAPIError.serverURLRequired }
 
         let endpoint = base.appendingPathComponent("api/watch/turn")
         let boundary = "OomiWatch-\(UUID().uuidString)"
@@ -35,7 +42,7 @@ struct WatchAPI {
         request.httpMethod = "POST"
         request.timeoutInterval = 45
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try multipartBody(audioURL: audioURL, pairingCode: pairingCode, boundary: boundary)
+        request.httpBody = try multipartBody(audioURL: audioURL, pairingCode: code, boundary: boundary)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WatchAPIError.invalidResponse }

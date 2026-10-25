@@ -164,15 +164,48 @@ private final class WatchFeedback: ObservableObject {
 private struct WatchSettings: View {
     @Binding var serverURL: String
     @Binding var pairingCode: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var draftServerURL = ""
+    @State private var draftPairingCode = ""
+
     var body: some View {
         Form {
-            TextField("https://oomi.vercel.app", text: $serverURL)
+            Section("Serveur Oomi") {
+                TextField("https://oomi.vercel.app", text: $draftServerURL)
                 .textInputAutocapitalization(.never)
-            TextField("Code à 6 chiffres", text: $pairingCode)
-            Text("L'adresse doit être publique et sécurisée. Le code est créé depuis le dashboard parent.")
-                .font(.footnote)
+                Text("Vous pouvez aussi coller le lien du dashboard : Oomi utilisera automatiquement le bon serveur.")
+                    .font(.footnote)
+            }
+            Section("Code de jumelage") {
+                TextField("Code à 6 chiffres", text: $draftPairingCode)
+                Text("Créez ce code dans Réglages > Apple Watch sur le dashboard parent.")
+                    .font(.footnote)
+            }
+            Button("Enregistrer la connexion") {
+                serverURL = canonicalServerURL(draftServerURL)
+                pairingCode = draftPairingCode.filter(\.isNumber)
+                dismiss()
+            }
+            .disabled(!canSave)
         }
         .navigationTitle("Connexion")
+        .onAppear {
+            draftServerURL = serverURL
+            draftPairingCode = pairingCode
+        }
+    }
+
+    private var canSave: Bool {
+        guard let url = URL(string: canonicalServerURL(draftServerURL)), url.scheme == "https", url.host != nil else { return false }
+        return draftPairingCode.filter(\.isNumber).count == 6
+    }
+
+    private func canonicalServerURL(_ value: String) -> String {
+        guard var components = URLComponents(string: value.trimmingCharacters(in: .whitespacesAndNewlines)) else { return value }
+        components.path = ""
+        components.query = nil
+        components.fragment = nil
+        return components.url?.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? value
     }
 }
 
