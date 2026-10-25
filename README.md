@@ -3,13 +3,29 @@
 > **A little companion for big questions.**
 > We don't want kids spending more time with AI. We want AI to help kids spend more time discovering the world.
 
-Built at the **OpenAI DevDay Hackathon 2026** (tracks Hardware · Impact · Build in Public).
+**[▶ Watch the launch film (2 min)](https://github.com/ebenbaruk/oomi-openai-devday-hack-2026/releases/tag/launch-film)** · **[Live demo](https://oomi-orcin.vercel.app)** · [Product spec](doc/SPEC.md) · [Submission & pitch kit](pitch-video/README.md)
 
-Oomi is a tiny AI explorer worn as a necklace by kids aged 6 to 10. The child holds the button and asks a question; Oomi answers in a few playful words, then suggests a small real-world experiment. Parents find each discovery in a journal, with an activity to do together, and a bedtime story made from the day's discoveries.
+Built at the **OpenAI DevDay Hackathon 2026** (tracks Hardware · Impact · Build in Public) by Eli, Ali and Akram.
 
-The product spec lives in [`doc/SPEC.md`](doc/SPEC.md).
+Oomi is a tiny AI explorer worn by kids aged 6 to 10. The child holds the button and asks a question; Oomi answers in a few playful words, then turns the answer into a small real-world mission. Parents find each discovery in a journal, with an activity to do together, and a bedtime story made from the day's discoveries.
 
-For the parent dashboard, Apple Watch and TestFlight implementation record, see [`doc/IMPLEMENTATION-STATUS.md`](doc/IMPLEMENTATION-STATUS.md).
+**Every answer ends in a mission.**
+
+## How it works
+
+1. **Ask.** Leo holds the button: "How do airplanes fly?" Oomi only listens while the button is held.
+2. **Check.** The server runs every question through a safety gate and picks one of three verdicts: answer, ask a grown-up, or a gentle no. The voice model never speaks on its own.
+3. **Go find out.** Oomi answers in three sentences, then sets a mission: "Fold two paper planes, one with big wings. Which flies farther?"
+4. **Share the spark.** That evening, the parent journal shows the discovery as an illustrated card with something to do together. No audio, no transcripts.
+
+## What's real today
+
+- **All the software, end to end**, deployed at [oomi-orcin.vercel.app](https://oomi-orcin.vercel.app) (the app behind the landing page needs the team access code, since it spends OpenAI credits).
+- **Oomi on a real wrist**: a native Apple Watch app (SwiftUI, TestFlight) with push-to-talk, haptics and the family's mascot. It goes through the same safety gate and fills the same parent journal. See [`watch/`](watch/README.md).
+- **The necklace** runs as a browser simulator that speaks exactly the protocol the ESP32 firmware will use. Building the necklace itself is next.
+- English and French, a 28-case safety suite that passes 100%, and a launch film drawn and animated entirely in code.
+
+Implementation notes for the parent dashboard and the Watch: [`doc/IMPLEMENTATION-STATUS.md`](doc/IMPLEMENTATION-STATUS.md).
 
 ## What's in the app
 
@@ -19,6 +35,8 @@ For the parent dashboard, Apple Watch and TestFlight implementation record, see 
 | `/oomi` | The **necklace simulator**: animated eyes (8 expressions), push-to-talk button (click, touch or Space), mic LED and mic kill switch, plus a demo console for the audience (typed questions, live captions, verdicts, latency) |
 | `/parent` | The **parent journal**: the day in one line, the week, illustrated discovery cards with "Do it together" activities, questions to talk about together, illustrated bedtime stories (with narration), what Oomi remembers (deletable), safety report, daily note, settings |
 | `/kids` | **Oomi TV**, for the family tablet: short motion-design explainers of the child's own discoveries and bedtime picture books. Every video ends with a real-world mission, nothing autoplays |
+| `/parent?view=mascot` | The **mascot studio**: 12 characters, palettes, face, accessories, name, personality and voice, plus AI portraits. The choice follows Oomi everywhere: the necklace, Oomi TV, the parent app and the Watch |
+| `watch/` | The **Apple Watch app**: pair it from Settings with a one-time 6-digit code, then hold to talk |
 | `/unlock` | Team access code (the app spends OpenAI credits, so it is not public) |
 
 ## Architecture
@@ -125,6 +143,8 @@ Open `/oomi`, enter the access code, tap the button to wake Oomi, then hold it (
 
 ```
 src/app/            pages and API routes
+watch/              native Apple Watch app (Xcode project)
+pitch-video/        launch film (Remotion), scripts, submission and pitch copy
 src/components/     device (necklace, eyes, simulator) and parent journal UI
 src/lib/            shared contracts, device client, access helpers
 src/server/         safety gate, persona, turn orchestration, Brain, images, journal, DB
@@ -138,6 +158,10 @@ doc/                spec, concepts, build in public
 - **Eli**
 - **Ali**
 - **Akram**
+
+## Credits
+
+Launch film music: "Happy Kids Playing" by Alex-Productions (onsound.eu), CC BY 3.0. Sound effects from Mixkit and Freesound (CC0). Mascot portrait method adapted from [ip-as-logo](third_party/ip-as-logo/) (MIT).
 
 ## License
 

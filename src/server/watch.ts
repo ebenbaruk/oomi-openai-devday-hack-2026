@@ -11,6 +11,7 @@ import { checkAnswer, decideTurn } from "./turn";
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const supportedAudio = new Set(["audio/mp4", "audio/m4a", "audio/x-m4a", "audio/aac", "audio/wav", "audio/x-wav", "audio/mpeg", "audio/webm"]);
 const WATCH_TOKEN_TTL = "365 days";
+const MAX_PAIRING_ATTEMPTS = 8;
 
 export class WatchError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -27,7 +28,7 @@ export async function createWatchPairing(): Promise<{ pairingCode: string; expir
     `INSERT INTO oomi_app.watch_device (child_id, name, pairing_code_hash, pairing_expires_at)
      VALUES ($1, 'Apple Watch', $2, now() + interval '15 minutes')
      ON CONFLICT (child_id, name) DO UPDATE SET pairing_code_hash = EXCLUDED.pairing_code_hash,
-       pairing_expires_at = EXCLUDED.pairing_expires_at, paired_at = NULL, last_seen_at = NULL
+       pairing_expires_at = EXCLUDED.pairing_expires_at, paired_at = NULL, last_seen_at = NULL, failed_attempts = 0
      RETURNING pairing_expires_at`,
     [CHILD_ID, credentialHash(pairingCode)],
   );
@@ -72,7 +73,17 @@ async function verifyWatch(credentials: WatchCredentials): Promise<WatchAuth> {
      WHERE child_id = $1 AND pairing_code_hash = $2 AND pairing_expires_at > now() LIMIT 1`,
     [CHILD_ID, credentialHash(code)],
   );
-  if (!device) throw new WatchError(401, "Ce code Watch a expiré. Créez-en un nouveau dans l'espace parent.");
+  if (!device) {
+    // Burn the pending code after a few wrong guesses so it can't be brute-forced.
+    await query(
+      `UPDATE oomi_app.watch_device
+       SET failed_attempts = failed_attempts + 1,
+         pairing_expires_at = CASE WHEN failed_attempts + 1 >= $2 THEN now() ELSE pairing_expires_at END
+       WHERE child_id = $1 AND paired_at IS NULL`,
+      [CHILD_ID, MAX_PAIRING_ATTEMPTS],
+    );
+    throw new WatchError(401, "Ce code Watch a expiré. Créez-en un nouveau dans l'espace parent.");
+  }
 
   const deviceToken = randomBytes(32).toString("base64url");
   const paired = await queryOne<{ id: string }>(

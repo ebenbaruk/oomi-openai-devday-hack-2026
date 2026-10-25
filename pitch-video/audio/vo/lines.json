@@ -1,0 +1,152 @@
+[
+  {
+    "id": "leo01",
+    "voice": "nova",
+    "instructions": "You are Leo, an excited curious seven-year-old boy. Small, high, childlike voice, a little breathless, genuine wonder.",
+    "text": "How do airplanes fly?"
+  },
+  {
+    "id": "n01",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "Kids are born question machines."
+  },
+  {
+    "id": "n02",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "But today, most of their answers come from a screen."
+  },
+  {
+    "id": "n03",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "The questions go in... and the world stays outside."
+  },
+  {
+    "id": "n04",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "Eli's little cousins ask why, all day long. Their parents wanted something better than a screen."
+  },
+  {
+    "id": "n05",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "So we built Oomi."
+  },
+  {
+    "id": "n06",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "A tiny AI necklace that answers kids' questions... then sends them out to explore."
+  },
+  {
+    "id": "leo02",
+    "voice": "nova",
+    "instructions": "You are Leo, an excited curious seven-year-old boy. Small, high, childlike voice, a little breathless, genuine wonder.",
+    "text": "Oomi, how do airplanes fly?"
+  },
+  {
+    "id": "oomi01",
+    "voice": "coral",
+    "instructions": "You are Oomi, a tiny curious explorer companion talking to a seven-year-old. Warm, bright, playful, smiling, full of wonder. Short bouncy phrasing, relaxed pace.",
+    "text": "Wings push the air down... so the air pushes the plane up! Want to test it? Fold two paper planes: one with big wings, one with small ones. Which one flies farther?"
+  },
+  {
+    "id": "leo03",
+    "voice": "nova",
+    "instructions": "You are Leo, an excited curious seven-year-old boy. Small, high, childlike voice, a little breathless, genuine wonder. Shouting with joy, proud.",
+    "text": "Hey, Oomi! The big wings won!"
+  },
+  {
+    "id": "oomi02",
+    "voice": "coral",
+    "instructions": "You are Oomi, a tiny curious explorer companion talking to a seven-year-old. Warm, bright, playful, smiling, full of wonder. Short bouncy phrasing, relaxed pace.",
+    "text": "Whoa, real scientist! Why do you think they won?"
+  },
+  {
+    "id": "n07",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "Every answer ends in a mission. And Oomi remembers what you found."
+  },
+  {
+    "id": "n08",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "At night, parents don't get a transcript. They get a spark."
+  },
+  {
+    "id": "n09",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "What Leo wondered about today... and something to do together."
+  },
+  {
+    "id": "n10",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "And at bedtime, Oomi tells a story starring Leo... made from his day."
+  },
+  {
+    "id": "n11",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "And every kid makes Oomi their own."
+  },
+  {
+    "id": "n12",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "Oomi only listens when you press. It never keeps your voice."
+  },
+  {
+    "id": "n13",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "And some questions belong to grown-ups."
+  },
+  {
+    "id": "oomi03",
+    "voice": "coral",
+    "instructions": "You are Oomi, a tiny curious explorer companion talking to a seven-year-old. Warm, bright, playful, smiling, full of wonder. Short bouncy phrasing, relaxed pace. Gentle and kind.",
+    "text": "Ooh, great question! That's a perfect one to ask your mom or dad."
+  },
+  {
+    "id": "n14",
+    "voice": "marin",
+    "instructions": "Warm, intimate storyteller narrating a heartfelt animated short film for parents. A gentle smile in the voice, unhurried, natural pauses, quiet wonder. Never salesy, never announcer-like.",
+    "text": "It's not a best friend. It's a launchpad."
+  },
+  {
+    "id": "n15",
+    "voice": "marin",
+    "instructions": "Warm storyteller, now upbeat and proud with a little spark of excitement, quicker rhythm, still intimate and human, never salesy.",
+    "text": "Saturday morning, Oomi was a sketch."
+  },
+  {
+    "id": "n15b",
+    "voice": "marin",
+    "instructions": "Warm storyteller, now upbeat and proud with a little spark of excitement, quicker rhythm, still intimate and human, never salesy.",
+    "text": "By Sunday: a voice, a family journal, a safety gate, Oomi TV, French... and a watch app."
+  },
+  {
+    "id": "n16",
+    "voice": "marin",
+    "instructions": "Warm storyteller, now upbeat and proud with a little spark of excitement, quicker rhythm, still intimate and human, never salesy.",
+    "text": "Built in public, by three grown-up kids who never stopped asking why."
+  },
+  {
+    "id": "n16b",
+    "voice": "marin",
+    "instructions": "Warm storyteller, now upbeat and proud with a little spark of excitement, quicker rhythm, still intimate and human, never salesy.",
+    "text": "Next stop: the necklace."
+  },
+  {
+    "id": "n17",
+    "voice": "marin",
+    "instructions": "Warm, heartfelt closing line of a short film. Slow, sincere, quietly moving, with a soft smile on the last words.",
+    "text": "We don't want kids spending more time with AI. We want AI to help kids spend more time discovering the world."
+  }
+]

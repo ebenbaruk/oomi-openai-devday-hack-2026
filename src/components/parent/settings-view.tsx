@@ -111,33 +111,35 @@ function WatchPairingCard() {
 function WatchConnectionDiagnostic({ connection }: { connection: WatchConnection }) {
   const lastSeen = connection.lastSeenAt ? new Date(connection.lastSeenAt) : null;
   const validLastSeen = Boolean(lastSeen && !Number.isNaN(lastSeen.valueOf()));
+  // Read the clock once per mount so render stays pure.
+  const [now] = useState(() => Date.now());
   const lastSeenLabel = validLastSeen
-    ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(lastSeen!)
+    ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(lastSeen!)
     : null;
-  const minutesAway = validLastSeen ? Math.max(0, Math.round((Date.now() - lastSeen!.valueOf()) / 60_000)) : null;
+  const minutesAway = validLastSeen ? Math.max(0, Math.round((now - lastSeen!.valueOf()) / 60_000)) : null;
   const current = minutesAway !== null && minutesAway <= 2;
 
   return (
     <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Diagnostic de connexion</p>
+        <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Connection check</p>
         <span className={`rounded-full px-2.5 py-1 text-[0.7rem] font-extrabold ${current ? "bg-mint-300/20 text-mint-100" : "bg-white/10 text-cream-100/80"}`}>
-          {current ? "En ligne" : connection.paired ? "En attente" : "Non associée"}
+          {current ? "Online" : connection.paired ? "Waiting" : "Not paired"}
         </span>
       </div>
       {connection.paired ? (
         <>
           <p className="mt-2 text-sm font-semibold text-white">
-            {lastSeenLabel ? `Dernier contact sécurisé : ${lastSeenLabel}` : "La montre est associée, mais n’a pas encore contacté Oomi."}
+            {lastSeenLabel ? `Last secure contact: ${lastSeenLabel}` : "The Watch is paired but hasn't contacted Oomi yet."}
           </p>
           <p className="mt-2 text-xs leading-relaxed text-cream-100/75">
             {current
-              ? "La montre échange bien avec Oomi. Les réglages du Studio se mettent à jour pendant que l’app est ouverte."
-              : "Si la montre ne répond pas : ouvrez Oomi, vérifiez le Wi‑Fi ou la connexion de l’iPhone, puis relâchez une courte question. Si aucun contact n’apparaît, créez un nouveau code et reconnectez la montre."}
+              ? "The Watch is talking to Oomi. Studio changes reach it while the app is open."
+              : "If the Watch doesn't respond: open Oomi, check Wi‑Fi or the iPhone connection, then ask a short question. If nothing shows up, create a new code and reconnect the Watch."}
           </p>
         </>
       ) : (
-        <p className="mt-2 text-xs leading-relaxed text-cream-100/75">Préparez un code puis saisissez-le dans Oomi sur la montre. Le dashboard n’enregistre jamais l’audio ni la conversation.</p>
+        <p className="mt-2 text-xs leading-relaxed text-cream-100/75">Create a code, then enter it in Oomi on the Watch. The dashboard never stores audio or the conversation.</p>
       )}
     </div>
   );

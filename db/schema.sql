@@ -144,3 +144,6 @@ CREATE TABLE IF NOT EXISTS oomi_app.watch_device (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (child_id, name)
 );
+
+-- v5: a pairing code dies after a few wrong guesses (it is only 6 digits on a public endpoint).
+ALTER TABLE oomi_app.watch_device ADD COLUMN IF NOT EXISTS failed_attempts int NOT NULL DEFAULT 0;

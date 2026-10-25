@@ -1,0 +1,15 @@
+film/node_modules/
+film/out/
+
+# Heavy or third-party media stays out of git. The finished film is attached to the
+# "launch-film" GitHub release; re-rendering needs these folders locally.
+.DS_Store
+output/
+film/public/
+audio/music/
+audio/sfx/
+audio/vo/raw/
+audio/vo/tests/
+assets/screens/
+assets/brand/
+assets/team/

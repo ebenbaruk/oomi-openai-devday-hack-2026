@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The launch film is its own Remotion project.
+    "pitch-video/**",
   ]),
 ]);
 
