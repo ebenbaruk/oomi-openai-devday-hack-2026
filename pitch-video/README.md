@@ -6,7 +6,7 @@ Everything for the submission video, the live pitch and the launch posts.
 
 | What | Where |
 |---|---|
-| **The film (1:59.6, 1080p, 30 fps, -15 LUFS)** | [GitHub release `launch-film`](https://github.com/ebenbaruk/oomi-openai-devday-hack-2026/releases/tag/launch-film) (rendered locally to `output/oomi-launch-film.mp4`) |
+| **The film (1:59.6, 1080p, 30 fps, -15 LUFS)** | [YouTube (unlisted)](https://youtu.be/Sra3sk70_cg) (rendered locally to `output/oomi-launch-film.mp4`) |
 | Master script (what the film says, beat by beat) | `scripts/00-master-script.md` |
 | 4 alternative film scripts (origin story, a day with Leo, manifesto, 36 hours) | `scripts/01-alt-scripts.md` |
 | 30 s, 15 s and 6 s cuts, plus a 60 s vertical version | `scripts/02-short-cuts.md` |

@@ -3,7 +3,7 @@
 > **A little companion for big questions.**
 > We don't want kids spending more time with AI. We want AI to help kids spend more time discovering the world.
 
-**[▶ Watch the launch film (2 min)](https://github.com/ebenbaruk/oomi-openai-devday-hack-2026/releases/tag/launch-film)** · **[Live demo](https://oomi-orcin.vercel.app)** · [Product spec](doc/SPEC.md) · [Submission & pitch kit](pitch-video/README.md)
+**[▶ Watch the launch film (2 min)](https://youtu.be/Sra3sk70_cg)** · **[Live demo](https://oomi-orcin.vercel.app)** · [Product spec](doc/SPEC.md) · [Submission & pitch kit](pitch-video/README.md)
 
 Built at the **OpenAI DevDay Hackathon 2026** (tracks Hardware · Impact · Build in Public) by Eli, Ali and Akram.
 
