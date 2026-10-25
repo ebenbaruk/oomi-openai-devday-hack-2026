@@ -3,7 +3,7 @@
 > **A little companion for big questions.**
 > We don't want kids spending more time with AI. We want AI to help kids spend more time discovering the world.
 
-**[▶ Watch the launch film (2 min)](https://youtu.be/Sra3sk70_cg)** · **[Live demo](https://oomi-orcin.vercel.app)** · [Product spec](doc/SPEC.md) · [Submission & pitch kit](pitch-video/README.md)
+**[▶ Watch the launch film (2 min)](https://youtu.be/Sra3sk70_cg)** · [Vision moodboard (30 s)](https://youtube.com/shorts/lssZKlUehTM) · **[Live demo](https://oomi-orcin.vercel.app)** · [Product spec](doc/SPEC.md) · [Submission & pitch kit](pitch-video/README.md)
 
 Built at the **OpenAI DevDay Hackathon 2026** (tracks Hardware · Impact · Build in Public) by Eli, Ali and Akram.
 
@@ -24,6 +24,8 @@ Oomi is a tiny AI explorer worn by kids aged 6 to 10. The child holds the button
 - **Oomi on a real wrist**: a native Apple Watch app (SwiftUI, TestFlight) with push-to-talk, haptics and the family's mascot. It goes through the same safety gate and fills the same parent journal. See [`watch/`](watch/README.md).
 - **The necklace** runs as a browser simulator that speaks exactly the protocol the ESP32 firmware will use. Building the necklace itself is next.
 - English and French, a 28-case safety suite that passes 100%, and a launch film drawn and animated entirely in code.
+
+**Where we're headed.** The [vision moodboard](https://youtube.com/shorts/lssZKlUehTM) is a 30-second AI-generated teaser showing the feel we're aiming for with the finished necklace: worn every day, part of family life, never a screen. It is a mood, not footage of the product; the launch film shows what actually works today.
 
 Implementation notes for the parent dashboard and the Watch: [`doc/IMPLEMENTATION-STATUS.md`](doc/IMPLEMENTATION-STATUS.md).
 
