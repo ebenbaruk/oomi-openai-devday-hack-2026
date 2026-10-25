@@ -139,7 +139,10 @@ export async function handleWatchTurn(request: Request): Promise<WatchTurnRespon
     if (gate.action === "sleep") return withAudio(`sleep:${crypto.randomUUID()}`, "decline", gate.say, child.language, child.mascot.voice, mascot, auth);
     if (gate.action === "story") return withAudio(gate.turnId, "answer", gate.say, gate.language, child.mascot.voice, mascot, auth);
 
-    const draft = gate.exactText ?? await writeReply(transcript, gate.instructions);
+    const watchInstructions = `${gate.instructions}
+
+You are answering on a small Apple Watch screen. Reply in one warm, child-friendly sentence of at most 18 words and 90 characters. Keep the answer complete and concrete.`;
+    const draft = gate.exactText ?? await writeReply(transcript, watchInstructions);
     const checked = await checkAnswer(draft, gate.language);
     return withAudio(gate.turnId, checked.safe ? gate.verdict : "decline", checked.safe ? draft : (checked.replacement ?? fallback), gate.language, child.mascot.voice, mascot, auth);
   } finally {
