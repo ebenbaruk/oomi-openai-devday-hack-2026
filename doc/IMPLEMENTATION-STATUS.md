@@ -11,6 +11,7 @@ This document records the work integrated on `feat/parent-dashboard` before it i
 - Parents can set gentle watch topics such as family changes, adoption and grief. Oomi redirects the child with care and records a discreet parent signal.
 - The dashboard creates a one-time, six-digit pairing code for the Apple Watch.
 - A mascot studio lets parents choose the character, colours, face and expression. Its configuration is stored server-side and exposed to the Watch profile endpoint.
+- The Apple Watch card now shows a privacy-preserving connection diagnostic: paired state and the last secure contact. It gives clear next steps when the Watch has not contacted Oomi recently.
 
 ### Watch application
 
@@ -19,6 +20,8 @@ This document records the work integrated on `feat/parent-dashboard` before it i
 - The Watch receives the same safety decision as the simulator. Audio and full transcripts are not kept in the database; parent-facing journal items are created from the approved turn.
 - Pairing creates a device credential stored in the Apple Keychain. A later foreground refresh loads the current mascot from `/api/watch/profile`, so changes saved in the parent dashboard reach the Watch without another pairing.
 - The Watch uses the demo Vercel deployment as its pre-filled server address. Settings remain available when a different environment must be used.
+- A selected Studio portrait is sent as the same image to the Watch. Otherwise, the native Watch illustration follows the saved character configuration.
+- The Watch home screen keeps its space for the character and conversation: the old preview wheel is removed, the Digital Crown changes the character expression, and server responses are written as one short, complete Watch-friendly sentence.
 
 ### Server, safety and data
 
@@ -47,26 +50,17 @@ This document records the work integrated on `feat/parent-dashboard` before it i
 - Safety evaluation: 28/28 cases passed against the configured live services.
 - `POST /api/speech` returned OpenAI MP3 audio in a live verification.
 
-## TestFlight distribution
+## Distribution and physical Watch status
 
-The TestFlight delivery is intentionally separate from the source branch:
-
-- Build 11 is signed with an Apple Distribution profile for team `L976M3ADD6`.
-- The iPhone and Watch bundles both have distribution entitlements (`get-task-allow=false`).
-- The archive declares that it uses only Apple-provided encryption (`ITSAppUsesNonExemptEncryption=false`), so it does not stop in App Store Connect’s export-compliance state.
-- Build 11 was accepted and processed by Apple, then added to the internal group **Oomi — test interne**.
-
-Build 10 should be ignored: Apple lists it as **Informations manquantes** because it predates the encryption declaration. Builds marked **Expiré** reached TestFlight’s normal 90-day availability limit; this is not a source-code failure.
-
-## Current limitation and recommended next check
-
-The source, archive and TestFlight group configuration are now aligned. The remaining validation is installing build 11 from TestFlight on the paired iPhone and checking that its Watch companion appears in the Watch app.
-
-If TestFlight still shows “The requested app is not available or does not exist” for build 11, capture the exact build number displayed in TestFlight and the iOS version. That would point to Apple’s delivery/client state rather than the signing, export compliance or tester assignment fixed here.
+- The current direct-development bundle is **build 15**, signed for Apple Developer team `L976M3ADD6`.
+- The physical Apple Watch is included in the Watch provisioning profile and the iPhone companion was installed successfully on the paired iPhone.
+- The child can complete a real turn on the physical Watch: record → OpenAI transcription and safety decision → OpenAI audio response → journal item in the parent dashboard.
+- TestFlight remains useful for later distribution, but is not the delivery path for the hackathon demo. A separate minimal install-check app produced the same availability failures in TestFlight, so that client or App Store Connect state is treated separately from the source and signing work.
 
 ## How to continue
 
-1. Test build 11 from TestFlight on the iPhone and install its Watch companion.
-2. Open Oomi Watch, confirm the server address, enter a fresh six-digit dashboard pairing code and save.
-3. Ask a short question and verify: response audio, Watch animation, new journal item in `/parent`, and mascot refresh after a dashboard change.
-4. Once this passes, merge `feat/parent-dashboard` into `main` through a pull request.
+1. Open Oomi Watch and confirm the paired child appears.
+2. Save a mascot change in the parent Studio while Oomi Watch is open; the Watch refreshes it within about 15 seconds.
+3. Ask a short question and verify the concise on-screen text, OpenAI audio and new journal item in `/parent`.
+4. Use the Apple Watch diagnostic in Settings to confirm the latest secure contact before the demo.
+5. Once the team accepts the branch, merge `feat/parent-dashboard` into `main` through a pull request.

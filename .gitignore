@@ -47,12 +47,18 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.swp
+*.xcuserstate
+*.xcuserdatad/
 
 # --- Logs & misc ---
 logs/
 *.log
 coverage/
 tmp/
+
+# --- Local Apple troubleshooting checkouts ---
+ios/OomiInstallCheck/
+watch/oomi-foundation/
 
 # --- Next.js generated ---
 next-env.d.ts

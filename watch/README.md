@@ -1,4 +1,4 @@
-# Oomi Watch prototype
+# Oomi Watch companion
 
 ## Chosen stack
 
@@ -9,17 +9,20 @@
 - **Security:** OpenAI credentials remain server-side. The watch receives only an approved response, a face state and optional approved audio.
 - **Later:** WatchConnectivity with a small iPhone companion can improve reachability, but direct HTTPS is simpler for the demo.
 
-## Test the mascot
+## Current implementation
 
-1. In Xcode, create a new **watchOS App** named `OomiWatch` using SwiftUI.
-2. Replace its generated app and content files with `OomiWatchApp.swift` and `OomiWatchHome.swift` from this folder.
-3. Run it on an Apple Watch simulator, then on the physical Apple Watch.
-4. Hold the green button to preview `listening`, then release to preview `thinking`.
+The Xcode project is [`OomiWatchApp/OomiWatch`](OomiWatchApp/OomiWatch). It includes an iPhone companion and the watchOS app.
 
-## Next implementation slice
+- Hold the push-to-talk control to record a maximum ten-second turn.
+- On release, the Watch sends the clip to `POST /api/watch/turn`.
+- The server transcribes it, applies the safety gate, obtains an approved OpenAI answer and returns OpenAI audio.
+- The Watch plays that audio at its maximum app-level volume and stores its device credential in the Keychain.
+- A paired Watch refreshes the parent-selected mascot profile from `POST /api/watch/profile` while Oomi is open.
+- The Digital Crown changes the expression when Oomi is idle; it does not expose the internal preview picker.
 
-Add an `AudioTurnRecorder` and one server endpoint:
+## Pair and test
 
-`POST /api/watch/turn` → audio clip → transcription → safety verdict → approved text/audio + Oomi mood.
-
-Use short request/response turns for the hackathon. Do not start with continuous duplex audio or a persistent WebSocket.
+1. In the parent dashboard, open **Settings → Connect Oomi** and create a six-digit code.
+2. On the Watch, open Oomi’s settings, enter the code and save. The demo server is pre-filled.
+3. Return to Oomi, hold the microphone control, ask a question and release it.
+4. Verify the short on-screen answer, OpenAI audio, a new parent journal item and the last-contact time in the dashboard diagnostic.
