@@ -2,7 +2,9 @@ import Foundation
 import Security
 
 struct WatchTurn: Decodable {
-    let turnId: UUID
+    // Some safe responses are conversations or stories (for example "chat:<uuid>").
+    // The Watch never needs to parse this server-side identifier.
+    let turnId: String
     let verdict: String
     let state: String
     let text: String
