@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import { paletteOf } from "@/components/mascot/colors";
 import { MascotArt } from "@/components/mascot/mascot-art";
 import { SPECIES } from "@/components/mascot/species";
@@ -45,11 +45,20 @@ export function SettingsView({
 // ---------- Apple Watch ----------
 
 type Pairing = { pairingCode: string; expiresAt: string };
+type WatchConnection = { paired: boolean; pairedAt: string | null; lastSeenAt: string | null };
 
 /** A short-lived code starts a secure Watch pairing without exposing the adult access code. */
 function WatchPairingCard() {
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const [connection, setConnection] = useState<WatchConnection | null>(null);
+
+  useEffect(() => {
+    fetch("/api/watch/pair", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<WatchConnection> : null)
+      .then(setConnection)
+      .catch(() => undefined);
+  }, []);
 
   const prepare = async () => {
     setState("loading");
@@ -57,6 +66,7 @@ function WatchPairingCard() {
       const response = await fetch("/api/watch/pair", { method: "POST" });
       if (!response.ok) throw new Error("pairing_failed");
       setPairing(await response.json() as Pairing);
+      setConnection({ paired: false, pairedAt: null, lastSeenAt: null });
       setState("idle");
     } catch {
       setState("error");
@@ -70,7 +80,7 @@ function WatchPairingCard() {
         <div>
           <p className="text-xs font-extrabold tracking-[0.14em] text-mint-200 uppercase">Apple Watch</p>
           <h2 id="watch-pairing-title" className="mt-1 font-display text-xl font-semibold">Connect Oomi</h2>
-          <p className="mt-1 text-sm leading-relaxed text-cream-100/75">Create a one-time code, then enter it in the Oomi Watch app. The Oomi server is already configured.</p>
+          <p className="mt-1 text-sm leading-relaxed text-cream-100/75">Your Watch stays connected after its first setup. The Oomi server is already configured.</p>
         </div>
       </div>
 
@@ -78,14 +88,20 @@ function WatchPairingCard() {
         <div className="mt-5 rounded-2xl bg-white/10 p-4">
           <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Code for this Watch</p>
           <p className="mt-1 font-mono text-4xl font-bold tracking-[0.24em] text-white">{pairing.pairingCode}</p>
-          <p className="mt-3 text-xs leading-relaxed text-cream-100/75">On the Watch: open ⚙, enter this code, then tap <strong className="font-semibold text-white">Enregistrer la connexion</strong>. The Watch saves its secure connection automatically. This code expires in 15 minutes.</p>
+          <p className="mt-3 text-xs leading-relaxed text-cream-100/75">On the Watch: open ⚙, enter this code, then tap <strong className="font-semibold text-white">Enregistrer la connexion</strong>. It stays securely connected afterwards. This code expires in 15 minutes.</p>
+        </div>
+      ) : connection?.paired ? (
+        <div className="mt-5 rounded-2xl bg-mint-300/15 p-4">
+          <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Watch connected</p>
+          <p className="mt-1 text-sm font-semibold text-white">This Apple Watch is connected to Oomi.</p>
+          <p className="mt-2 text-xs leading-relaxed text-cream-100/75">No code is needed again. Create one only if you intentionally reconnect this Watch.</p>
         </div>
       ) : (
         <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-5 rounded-full bg-mint-300 px-5 py-2.5 font-bold text-navy-950 transition hover:bg-mint-200 disabled:opacity-60">
           {state === "loading" ? "Creating code…" : "Prepare my Apple Watch"}
         </button>
       )}
-      {pairing && <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-4 text-sm font-bold text-mint-200 underline underline-offset-4 disabled:opacity-60">Create another code</button>}
+      {(pairing || connection?.paired) && <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-4 text-sm font-bold text-mint-200 underline underline-offset-4 disabled:opacity-60">Reconnect this Watch</button>}
       {state === "error" && <p role="alert" className="mt-3 text-sm font-semibold text-coral-200">Couldn&apos;t create a code. Please try again.</p>}
     </section>
   );

@@ -35,6 +35,22 @@ export async function createWatchPairing(): Promise<{ pairingCode: string; expir
   return { pairingCode, expiresAt: row.pairing_expires_at.toISOString() };
 }
 
+/** Lets the parent UI distinguish an already linked Watch from a Watch that needs first-time setup. */
+export async function getWatchPairingStatus(): Promise<{ paired: boolean; pairedAt: string | null; lastSeenAt: string | null }> {
+  const device = await queryOne<{ paired_at: Date | null; last_seen_at: Date | null }>(
+    `SELECT paired_at, last_seen_at
+     FROM oomi_app.watch_device
+     WHERE child_id = $1 AND name = 'Apple Watch'
+     LIMIT 1`,
+    [CHILD_ID],
+  );
+  return {
+    paired: Boolean(device?.paired_at),
+    pairedAt: device?.paired_at?.toISOString() ?? null,
+    lastSeenAt: device?.last_seen_at?.toISOString() ?? null,
+  };
+}
+
 /** The short code is accepted once, then replaced by a high-entropy credential in the Watch Keychain. */
 async function verifyWatch(credentials: WatchCredentials): Promise<WatchAuth> {
   if (credentials.deviceToken) {

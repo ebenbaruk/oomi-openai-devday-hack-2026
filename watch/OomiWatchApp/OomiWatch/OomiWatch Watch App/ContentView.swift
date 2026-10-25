@@ -220,6 +220,7 @@ private struct WatchSettings: View {
     @Binding var pairingCode: String
     @Environment(\.dismiss) private var dismiss
     @State private var draftPairingCode = ""
+    @State private var reconnecting = false
     let refreshMascot: () async -> Void
 
     var body: some View {
@@ -231,20 +232,30 @@ private struct WatchSettings: View {
                     .font(.footnote)
             }
             Section("Code de jumelage") {
-                TextField("Code à 6 chiffres", text: $draftPairingCode)
-                Text("Créez ce code dans Réglages > Apple Watch sur le dashboard parent.")
-                    .font(.footnote)
+                if WatchCredentialStore.token() != nil && !reconnecting {
+                    Label("Cette Watch reste connectée à Oomi.", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Aucun nouveau code n'est nécessaire.")
+                        .font(.footnote)
+                    Button("Reconnecter cette Watch") {
+                        reconnecting = true
+                    }
+                } else {
+                    TextField("Code à 6 chiffres", text: $draftPairingCode)
+                    Text("Créez ce code dans Réglages > Apple Watch sur le dashboard parent.")
+                        .font(.footnote)
+                    Button("Enregistrer la connexion") {
+                        serverURL = defaultOomiServerURL
+                        // A fresh parent code is an explicit reconnection request. It must replace
+                        // any credential left by an earlier, revoked pairing.
+                        WatchCredentialStore.clear()
+                        pairingCode = draftPairingCode.filter(\.isNumber)
+                        dismiss()
+                        Task { await refreshMascot() }
+                    }
+                    .disabled(!canSave)
+                }
             }
-            Button("Enregistrer la connexion") {
-                serverURL = defaultOomiServerURL
-                // A fresh parent code is an explicit reconnection request. It must replace
-                // any credential left by an earlier, revoked pairing.
-                WatchCredentialStore.clear()
-                pairingCode = draftPairingCode.filter(\.isNumber)
-                dismiss()
-                Task { await refreshMascot() }
-            }
-            .disabled(!canSave)
         }
         .navigationTitle("Connexion")
         .onAppear {
