@@ -117,7 +117,7 @@ struct OomiWatchHome: View {
                 }
             } catch {
                 isHolding = false
-                showProblem(error.localizedDescription)
+                showProblem(message(for: error))
             }
         }
     }
@@ -142,7 +142,7 @@ struct OomiWatchHome: View {
                 show(turn)
             } catch {
                 try? FileManager.default.removeItem(at: audioURL)
-                showProblem(error.localizedDescription)
+                showProblem(message(for: error))
             }
         }
     }
@@ -170,6 +170,18 @@ struct OomiWatchHome: View {
         mood = .problem
         message = text
         WKInterfaceDevice.current().play(.failure)
+    }
+
+    private func message(for error: Error) -> String {
+        let localized = error.localizedDescription.lowercased()
+        if let networkError = error as? URLError,
+           [.networkConnectionLost, .notConnectedToInternet, .timedOut, .cannotConnectToHost, .cannotFindHost].contains(networkError.code) {
+            return "Connexion interrompue. Rouvre Oomi puis réessaie."
+        }
+        if localized.contains("connexion réseau") || localized.contains("network connection") || localized.contains("timed out") {
+            return "Connexion interrompue. Rouvre Oomi puis réessaie."
+        }
+        return error.localizedDescription
     }
 
     private func refreshMascot() async {
@@ -352,7 +364,11 @@ private struct MascotBody: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: species == "robot" ? 23 : 42, style: .continuous).fill(color)
+            if species == "ghost" {
+                GhostBody(color: color)
+            } else {
+                RoundedRectangle(cornerRadius: species == "robot" ? 23 : 42, style: .continuous).fill(color)
+            }
             if species == "cat" || species == "bear" {
                 HStack(spacing: 42) { Circle().fill(color).frame(width: 29, height: 29); Circle().fill(color).frame(width: 29, height: 29) }
                     .offset(y: -41)
@@ -366,9 +382,29 @@ private struct MascotBody: View {
                     .offset(y: -34)
             }
             if species == "cloud" { Circle().fill(color).frame(width: 57, height: 57).offset(x: -26, y: 8) }
-            if species == "ghost" { Capsule().fill(color).frame(width: 92, height: 81).offset(y: 8) }
         }
         .frame(width: 100, height: 100)
+    }
+}
+
+/** The dashboard ghost has a soft dome and three rounded feet. Keep the compact Watch drawing recognisably the same character. */
+private struct GhostBody: View {
+    let color: Color
+
+    var body: some View {
+        Path { path in
+            path.move(to: CGPoint(x: 16, y: 89))
+            path.addLine(to: CGPoint(x: 16, y: 45))
+            path.addCurve(to: CGPoint(x: 50, y: 10), control1: CGPoint(x: 16, y: 25), control2: CGPoint(x: 31, y: 10))
+            path.addCurve(to: CGPoint(x: 84, y: 45), control1: CGPoint(x: 69, y: 10), control2: CGPoint(x: 84, y: 25))
+            path.addLine(to: CGPoint(x: 84, y: 88))
+            path.addCurve(to: CGPoint(x: 72, y: 96), control1: CGPoint(x: 82, y: 97), control2: CGPoint(x: 76, y: 98))
+            path.addCurve(to: CGPoint(x: 50, y: 87), control1: CGPoint(x: 65, y: 87), control2: CGPoint(x: 60, y: 84))
+            path.addCurve(to: CGPoint(x: 28, y: 96), control1: CGPoint(x: 40, y: 84), control2: CGPoint(x: 35, y: 87))
+            path.addCurve(to: CGPoint(x: 16, y: 89), control1: CGPoint(x: 24, y: 98), control2: CGPoint(x: 18, y: 97))
+            path.closeSubpath()
+        }
+        .fill(color)
     }
 }
 
