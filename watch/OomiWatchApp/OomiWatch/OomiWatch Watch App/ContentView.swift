@@ -19,41 +19,41 @@ struct OomiWatchHome: View {
     @State private var captureTimeoutTask: Task<Void, Never>?
     @State private var showingSettings = false
     @State private var mascot = WatchMascot.cached()
+    @State private var crownExpression = 0.0
     @AppStorage("oomiServerURL") private var serverURL = defaultOomiServerURL
     @AppStorage("oomiPairingCode") private var pairingCode = ""
     @StateObject private var recorder = WatchAudioRecorder()
     @StateObject private var feedback = WatchFeedback()
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             Color(hex: mascot.config.backgroundColor).ignoresSafeArea()
             VStack(spacing: 7) {
-                HStack(spacing: 5) {
-                    Text(mood == .resting ? mascot.config.name.lowercased() : mood.rawValue)
-                    Button { showingSettings = true } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Configurer Oomi")
-                }
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.76))
-
                 ZStack {
                     ListeningHalo(active: isHolding)
                     OomiFace(mood: mood, mascot: mascot)
                         .frame(width: 104, height: 104)
+                        .focusable(true)
+                        .digitalCrownRotation(
+                            $crownExpression,
+                            from: 0,
+                            through: 3,
+                            by: 1,
+                            sensitivity: .low,
+                            isContinuous: false,
+                            isHapticFeedbackEnabled: true
+                        )
                 }
                 .frame(width: 126, height: 112)
                 .accessibilityLabel("Oomi est \(mood.rawValue.lowercased())")
 
                 Text(message)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.68))
-                    .frame(maxWidth: 145)
-                    .lineLimit(2)
+                    .foregroundStyle(.white.opacity(0.76))
+                    .frame(maxWidth: 154, minHeight: 34)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.78)
 
                 PushToTalkControl(
                     holding: isHolding,
@@ -61,7 +61,20 @@ struct OomiWatchHome: View {
                     stop: { stopTalking(timedOut: false) }
                 )
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
+            .padding(.top, 4)
+
+            Button { showingSettings = true } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .padding(7)
+                    .background(.black.opacity(0.16), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white.opacity(0.84))
+            .padding(.top, 1)
+            .padding(.trailing, 5)
+            .accessibilityLabel("Configurer Oomi")
         }
         .onAppear {
             // Old builds let a truncated URL get saved. The hackathon build always uses the live demo server.
@@ -82,21 +95,14 @@ struct OomiWatchHome: View {
             guard phase == .active else { return }
             Task { await refreshMascot() }
         }
+        .onChange(of: crownExpression) { _, value in
+            guard !isHolding, mood != .thinking else { return }
+            mood = [.resting, .happy, .listening, .speaking][Int(value.rounded())]
+            message = WatchCopy.expression(for: mood)
+        }
         .sheet(isPresented: $showingSettings) {
             WatchSettings(serverURL: $serverURL, pairingCode: $pairingCode, refreshMascot: refreshMascot)
         }
-        #if DEBUG
-        .safeAreaInset(edge: .bottom) {
-            Picker("Aperçu", selection: $mood) {
-                ForEach(OomiMood.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .labelsHidden()
-            .pickerStyle(.wheel)
-            .frame(height: 28)
-            .opacity(0.001)
-            .accessibilityLabel("Changer l’expression en aperçu")
-        }
-        #endif
     }
 
     private func startTalking() {
@@ -150,7 +156,7 @@ struct OomiWatchHome: View {
     private func show(_ turn: WatchTurn) {
         mascot = turn.mascot
         mascot.cache()
-        message = turn.text
+        message = WatchCopy.compact(turn.text)
         mood = switch turn.state {
         case "happy": .happy
         case "grown_up": .grownUp
@@ -168,7 +174,7 @@ struct OomiWatchHome: View {
 
     private func showProblem(_ text: String) {
         mood = .problem
-        message = text
+        message = WatchCopy.compact(text)
         WKInterfaceDevice.current().play(.failure)
     }
 
@@ -209,6 +215,7 @@ private final class WatchFeedback: ObservableObject {
         try session.setCategory(.playback, mode: .default)
         try session.setActive(true)
         let player = try AVAudioPlayer(data: audio)
+        player.volume = 1.0
         player.prepareToPlay()
         player.play()
         self.player = player
@@ -265,6 +272,31 @@ private struct WatchSettings: View {
 
     private var canSave: Bool {
         return draftPairingCode.filter(\.isNumber).count == 6
+    }
+}
+
+private enum WatchCopy {
+    static func compact(_ value: String) -> String {
+        let normalized = value.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized.count > 96 else { return normalized }
+        let clauses = normalized.split(whereSeparator: { ".!?…".contains($0) })
+        if let first = clauses.first, first.count <= 96 { return String(first).trimmingCharacters(in: .whitespacesAndNewlines) + "." }
+        let prefix = normalized.prefix(93)
+        let safeCut = prefix.lastIndex(of: " ") ?? prefix.endIndex
+        return String(prefix[..<safeCut]) + "…"
+    }
+
+    static func expression(for mood: OomiMood) -> String {
+        switch mood {
+        case .resting: "Prêt pour une nouvelle question."
+        case .happy: "Youpi !"
+        case .listening: "Je t'écoute."
+        case .speaking: "J'ai une idée à partager."
+        case .thinking: "Je réfléchis."
+        case .grownUp: "On en parle avec un adulte."
+        case .declined: "Restons en sécurité."
+        case .problem: "Un instant."
+        }
     }
 }
 
@@ -328,23 +360,35 @@ struct OomiFace: View {
 
     var body: some View {
         ZStack {
-            if mood == .resting, let image = portraitImage {
+            if let image = portraitImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 100, height: 100)
                     .clipShape(RoundedRectangle(cornerRadius: 33, style: .continuous))
             } else {
-                MascotBody(species: mascot.config.species, color: Color(hex: mascot.config.bodyColor))
-                RoundedRectangle(cornerRadius: 31, style: .continuous)
-                    .fill(Color(red: 0.06, green: 0.12, blue: 0.20))
-                    .frame(width: 76, height: 59)
+                MascotBody(
+                    species: mascot.config.species,
+                    color: Color(hex: mascot.config.bodyColor),
+                    accent: Color(hex: mascot.config.accentColor)
+                )
+                if usesScreen {
+                    RoundedRectangle(cornerRadius: 31, style: .continuous)
+                        .fill(Color(red: 0.06, green: 0.12, blue: 0.20))
+                        .frame(width: 76, height: 59)
+                        .offset(y: -9)
+                    HStack(spacing: mood == .thinking ? 17 : 21) {
+                        MascotEye(style: mascot.config.eyes, mood: mood, right: false)
+                        MascotEye(style: mascot.config.eyes, mood: mood, right: true)
+                    }
                     .offset(y: -9)
-                HStack(spacing: mood == .thinking ? 17 : 21) {
-                    MascotEye(style: mascot.config.eyes, mood: mood, right: false)
-                    MascotEye(style: mascot.config.eyes, mood: mood, right: true)
+                } else {
+                    HStack(spacing: mascot.config.eyes == "dots" ? 26 : 30) {
+                        SimpleMascotEye(style: mascot.config.eyes, mood: mood)
+                        SimpleMascotEye(style: mascot.config.eyes, mood: mood)
+                    }
+                    .offset(y: -7)
                 }
-                .offset(y: -9)
                 if mascot.config.cheeks {
                     HStack(spacing: 42) {
                         Circle().fill(Color.white.opacity(0.28)).frame(width: 10, height: 6)
@@ -353,8 +397,10 @@ struct OomiFace: View {
                     .offset(y: 13)
                 }
                 MascotMouth(style: mascot.config.mouth, mood: mood)
-                    .offset(y: 14)
-                Circle().fill(Color(hex: mascot.config.accentColor)).frame(width: 26, height: 26).offset(y: 31)
+                    .offset(y: usesScreen ? 14 : 17)
+                if usesScreen {
+                    Circle().fill(Color(hex: mascot.config.accentColor)).frame(width: 26, height: 26).offset(y: 31)
+                }
                 MascotAccessory(style: mascot.config.accessory, color: Color(hex: mascot.config.accentColor))
             }
             Circle().fill(mood == .listening ? .green : .clear).frame(width: 4, height: 4).offset(x: 35, y: 35)
@@ -362,6 +408,8 @@ struct OomiFace: View {
         .shadow(color: .black.opacity(0.28), radius: 7, y: 5)
         .animation(.spring(duration: 0.3), value: mood)
     }
+
+    private var usesScreen: Bool { ["pebble", "robot"].contains(mascot.config.species) }
 
     private var portraitImage: UIImage? {
         guard let portrait = mascot.portrait, let data = Data(base64Encoded: portrait.base64) else { return nil }
@@ -372,11 +420,12 @@ struct OomiFace: View {
 private struct MascotBody: View {
     let species: String
     let color: Color
+    let accent: Color
 
     var body: some View {
         ZStack {
             if species == "ghost" {
-                GhostBody(color: color)
+                GhostBody(color: color, accent: accent)
             } else {
                 RoundedRectangle(cornerRadius: species == "robot" ? 23 : 42, style: .continuous).fill(color)
             }
@@ -401,9 +450,13 @@ private struct MascotBody: View {
 /** The dashboard ghost has a soft dome and three rounded feet. Keep the compact Watch drawing recognisably the same character. */
 private struct GhostBody: View {
     let color: Color
+    let accent: Color
 
     var body: some View {
-        Path { path in
+        ZStack {
+            Ellipse().fill(accent).frame(width: 26, height: 18).offset(x: -43, y: 14)
+            Ellipse().fill(accent).frame(width: 26, height: 18).offset(x: 43, y: 14)
+            Path { path in
             path.move(to: CGPoint(x: 16, y: 89))
             path.addLine(to: CGPoint(x: 16, y: 45))
             path.addCurve(to: CGPoint(x: 50, y: 10), control1: CGPoint(x: 16, y: 25), control2: CGPoint(x: 31, y: 10))
@@ -414,8 +467,28 @@ private struct GhostBody: View {
             path.addCurve(to: CGPoint(x: 28, y: 96), control1: CGPoint(x: 40, y: 84), control2: CGPoint(x: 35, y: 87))
             path.addCurve(to: CGPoint(x: 16, y: 89), control1: CGPoint(x: 24, y: 98), control2: CGPoint(x: 18, y: 97))
             path.closeSubpath()
+            }
+            .fill(color)
         }
-        .fill(color)
+    }
+}
+
+private struct SimpleMascotEye: View {
+    let style: String
+    let mood: OomiMood
+
+    var body: some View {
+        Group {
+            if style == "sleepy" {
+                Capsule().fill(Color(red: 0.06, green: 0.12, blue: 0.20)).frame(width: 14, height: 3)
+            } else if style == "sparkle" {
+                Image(systemName: "sparkle").font(.system(size: 14, weight: .bold)).foregroundStyle(Color(red: 0.06, green: 0.12, blue: 0.20))
+            } else {
+                Capsule().fill(Color(red: 0.06, green: 0.12, blue: 0.20))
+                    .frame(width: style == "dots" ? 10 : 13, height: style == "ovals" ? 22 : 14)
+            }
+        }
+        .scaleEffect(y: mood == .happy ? 0.65 : 1, anchor: .bottom)
     }
 }
 

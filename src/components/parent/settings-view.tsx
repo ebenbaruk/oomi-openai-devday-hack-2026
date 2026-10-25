@@ -102,8 +102,44 @@ function WatchPairingCard() {
         </button>
       )}
       {(pairing || connection?.paired) && <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-4 text-sm font-bold text-mint-200 underline underline-offset-4 disabled:opacity-60">Reconnect this Watch</button>}
+      {connection && <WatchConnectionDiagnostic connection={connection} />}
       {state === "error" && <p role="alert" className="mt-3 text-sm font-semibold text-coral-200">Couldn&apos;t create a code. Please try again.</p>}
     </section>
+  );
+}
+
+function WatchConnectionDiagnostic({ connection }: { connection: WatchConnection }) {
+  const lastSeen = connection.lastSeenAt ? new Date(connection.lastSeenAt) : null;
+  const validLastSeen = Boolean(lastSeen && !Number.isNaN(lastSeen.valueOf()));
+  const lastSeenLabel = validLastSeen
+    ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(lastSeen!)
+    : null;
+  const minutesAway = validLastSeen ? Math.max(0, Math.round((Date.now() - lastSeen!.valueOf()) / 60_000)) : null;
+  const current = minutesAway !== null && minutesAway <= 2;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Diagnostic de connexion</p>
+        <span className={`rounded-full px-2.5 py-1 text-[0.7rem] font-extrabold ${current ? "bg-mint-300/20 text-mint-100" : "bg-white/10 text-cream-100/80"}`}>
+          {current ? "En ligne" : connection.paired ? "En attente" : "Non associée"}
+        </span>
+      </div>
+      {connection.paired ? (
+        <>
+          <p className="mt-2 text-sm font-semibold text-white">
+            {lastSeenLabel ? `Dernier contact sécurisé : ${lastSeenLabel}` : "La montre est associée, mais n’a pas encore contacté Oomi."}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-cream-100/75">
+            {current
+              ? "La montre échange bien avec Oomi. Les réglages du Studio se mettent à jour pendant que l’app est ouverte."
+              : "Si la montre ne répond pas : ouvrez Oomi, vérifiez le Wi‑Fi ou la connexion de l’iPhone, puis relâchez une courte question. Si aucun contact n’apparaît, créez un nouveau code et reconnectez la montre."}
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-xs leading-relaxed text-cream-100/75">Préparez un code puis saisissez-le dans Oomi sur la montre. Le dashboard n’enregistre jamais l’audio ni la conversation.</p>
+      )}
+    </div>
   );
 }
 
