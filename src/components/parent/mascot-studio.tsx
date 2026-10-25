@@ -356,7 +356,7 @@ function SaveBar({ draft, dirty, save, name, onSave }: { draft: MascotConfig; di
       : save === "error"
         ? "Couldn't save. Check the name and try again."
         : save === "saved" && !dirty
-          ? `Saved! ${name} will update on the Watch when it opens or listens next.`
+          ? `Saved! ${name} will update on the Watch within 15 seconds while Oomi is open.`
           : dirty
             ? "Unsaved changes"
             : "All changes saved";

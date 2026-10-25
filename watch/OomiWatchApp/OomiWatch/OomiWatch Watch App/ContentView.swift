@@ -12,6 +12,7 @@ enum OomiMood: String, CaseIterable, Identifiable {
 private let defaultOomiServerURL = "https://oomi-openai-devday-hack-2026-git-feat-pare-eb0c0c-akramedn-3275.vercel.app"
 
 struct OomiWatchHome: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var mood: OomiMood = .resting
     @State private var isHolding = false
     @State private var message = "Une grande découverte commence par une petite question."
@@ -67,7 +68,20 @@ struct OomiWatchHome: View {
             if serverURL != defaultOomiServerURL { serverURL = defaultOomiServerURL }
             WKInterfaceDevice.current().play(.start)
         }
-        .task(id: "\(serverURL)|\(pairingCode)") { await refreshMascot() }
+        // The dashboard is the source of truth for the family character.  Keep the
+        // foreground Watch in sync without asking a parent to pair again or start a chat.
+        .task(id: "\(serverURL)|\(pairingCode)") {
+            await refreshMascot()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled else { return }
+                await refreshMascot()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await refreshMascot() }
+        }
         .sheet(isPresented: $showingSettings) {
             WatchSettings(serverURL: $serverURL, pairingCode: $pairingCode, refreshMascot: refreshMascot)
         }
