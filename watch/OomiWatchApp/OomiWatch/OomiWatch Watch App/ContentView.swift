@@ -62,7 +62,11 @@ struct OomiWatchHome: View {
             }
             .padding(.horizontal, 14)
         }
-        .onAppear { WKInterfaceDevice.current().play(.start) }
+        .onAppear {
+            // Old builds let a truncated URL get saved. The hackathon build always uses the live demo server.
+            if serverURL != defaultOomiServerURL { serverURL = defaultOomiServerURL }
+            WKInterfaceDevice.current().play(.start)
+        }
         .task(id: "\(serverURL)|\(pairingCode)") { await refreshMascot() }
         .sheet(isPresented: $showingSettings) {
             WatchSettings(serverURL: $serverURL, pairingCode: $pairingCode, refreshMascot: refreshMascot)
@@ -155,11 +159,16 @@ struct OomiWatchHome: View {
     }
 
     private func refreshMascot() async {
-        guard !serverURL.isEmpty, pairingCode.filter(\.isNumber).count == 6 else { return }
+        guard !serverURL.isEmpty,
+              WatchCredentialStore.token() != nil || pairingCode.filter(\.isNumber).count == 6 else { return }
         do {
             let profile = try await WatchAPI().profile(serverURL: serverURL, pairingCode: pairingCode)
             mascot = profile.mascot
             mascot.cache()
+            if profile.deviceToken != nil {
+                pairingCode = ""
+                message = "Connecté à l'espace de \(profile.childName)."
+            }
         } catch {
             // The existing cached identity stays visible when the Watch is offline.
         }
@@ -184,16 +193,15 @@ private struct WatchSettings: View {
     @Binding var serverURL: String
     @Binding var pairingCode: String
     @Environment(\.dismiss) private var dismiss
-    @State private var draftServerURL = ""
     @State private var draftPairingCode = ""
     let refreshMascot: () async -> Void
 
     var body: some View {
         Form {
             Section("Serveur Oomi") {
-                TextField("https://oomi.vercel.app", text: $draftServerURL)
-                .textInputAutocapitalization(.never)
-                Text("L'adresse de démo est déjà configurée. Vous pouvez la changer si nécessaire.")
+                Label("Serveur de démo Oomi", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text("Il est déjà configuré sur cette Watch.")
                     .font(.footnote)
             }
             Section("Code de jumelage") {
@@ -202,7 +210,7 @@ private struct WatchSettings: View {
                     .font(.footnote)
             }
             Button("Enregistrer la connexion") {
-                serverURL = canonicalServerURL(draftServerURL)
+                serverURL = defaultOomiServerURL
                 pairingCode = draftPairingCode.filter(\.isNumber)
                 dismiss()
                 Task { await refreshMascot() }
@@ -211,22 +219,12 @@ private struct WatchSettings: View {
         }
         .navigationTitle("Connexion")
         .onAppear {
-            draftServerURL = serverURL.isEmpty ? defaultOomiServerURL : serverURL
             draftPairingCode = pairingCode
         }
     }
 
     private var canSave: Bool {
-        guard let url = URL(string: canonicalServerURL(draftServerURL)), url.scheme == "https", url.host != nil else { return false }
         return draftPairingCode.filter(\.isNumber).count == 6
-    }
-
-    private func canonicalServerURL(_ value: String) -> String {
-        guard var components = URLComponents(string: value.trimmingCharacters(in: .whitespacesAndNewlines)) else { return value }
-        components.path = ""
-        components.query = nil
-        components.fragment = nil
-        return components.url?.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? value
     }
 }
 

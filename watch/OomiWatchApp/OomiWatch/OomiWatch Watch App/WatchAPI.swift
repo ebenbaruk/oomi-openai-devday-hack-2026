@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 struct WatchTurn: Decodable {
     let turnId: UUID
@@ -8,6 +9,7 @@ struct WatchTurn: Decodable {
     let audioBase64: String?
     let audioMimeType: String?
     let mascot: WatchMascot
+    let deviceToken: String?
 }
 
 struct WatchMascot: Codable, Equatable {
@@ -61,6 +63,38 @@ struct WatchMascotPortrait: Codable, Equatable {
 struct WatchProfile: Decodable {
     let childName: String
     let mascot: WatchMascot
+    let deviceToken: String?
+}
+
+enum WatchCredentialStore {
+    private static let service = "app.oomi.watch"
+    private static let account = "paired-device-token"
+
+    static func token() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func save(_ token: String) {
+        let base: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        SecItemDelete(base as CFDictionary)
+        var item = base
+        item[kSecValueData as String] = Data(token.utf8)
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        SecItemAdd(item as CFDictionary, nil)
+    }
 }
 
 enum WatchAPIError: LocalizedError {
@@ -81,7 +115,7 @@ enum WatchAPIError: LocalizedError {
 
 struct WatchAPI {
     func send(audioURL: URL, serverURL: String, pairingCode: String) async throws -> WatchTurn {
-        let (base, code) = try connection(serverURL: serverURL, pairingCode: pairingCode)
+        let (base, credential) = try connection(serverURL: serverURL, pairingCode: pairingCode)
 
         let endpoint = base.appendingPathComponent("api/watch/turn")
         let boundary = "OomiWatch-\(UUID().uuidString)"
@@ -89,7 +123,7 @@ struct WatchAPI {
         request.httpMethod = "POST"
         request.timeoutInterval = 45
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try multipartBody(audioURL: audioURL, pairingCode: code, boundary: boundary)
+        request.httpBody = try multipartBody(audioURL: audioURL, credential: credential, boundary: boundary)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WatchAPIError.invalidResponse }
@@ -97,16 +131,18 @@ struct WatchAPI {
             let message = (try? JSONDecoder().decode(ServerError.self, from: data))?.error ?? "Oomi est indisponible."
             throw WatchAPIError.server(message)
         }
-        return try JSONDecoder().decode(WatchTurn.self, from: data)
+        let turn = try JSONDecoder().decode(WatchTurn.self, from: data)
+        if let token = turn.deviceToken { WatchCredentialStore.save(token) }
+        return turn
     }
 
     func profile(serverURL: String, pairingCode: String) async throws -> WatchProfile {
-        let (base, code) = try connection(serverURL: serverURL, pairingCode: pairingCode)
+        let (base, credential) = try connection(serverURL: serverURL, pairingCode: pairingCode)
         var request = URLRequest(url: base.appendingPathComponent("api/watch/profile"))
         request.httpMethod = "POST"
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(["pairingCode": code])
+        request.httpBody = try JSONEncoder().encode(credential)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw WatchAPIError.invalidResponse }
@@ -114,27 +150,32 @@ struct WatchAPI {
             let message = (try? JSONDecoder().decode(ServerError.self, from: data))?.error ?? "Oomi est indisponible."
             throw WatchAPIError.server(message)
         }
-        return try JSONDecoder().decode(WatchProfile.self, from: data)
+        let profile = try JSONDecoder().decode(WatchProfile.self, from: data)
+        if let token = profile.deviceToken { WatchCredentialStore.save(token) }
+        return profile
     }
 
-    private func connection(serverURL: String, pairingCode: String) throws -> (URL, String) {
+    private func connection(serverURL: String, pairingCode: String) throws -> (URL, [String: String]) {
         let code = pairingCode.filter(\.isNumber)
-        guard code.range(of: "^[0-9]{6}$", options: .regularExpression) != nil else { throw WatchAPIError.pairingCodeRequired }
         guard var components = URLComponents(string: serverURL.trimmingCharacters(in: .whitespacesAndNewlines)),
               components.scheme == "https", components.host != nil else { throw WatchAPIError.serverURLRequired }
         components.path = ""
         components.query = nil
         components.fragment = nil
         guard let base = components.url else { throw WatchAPIError.serverURLRequired }
-        return (base, code)
+        if let token = WatchCredentialStore.token() { return (base, ["deviceToken": token]) }
+        guard code.range(of: "^[0-9]{6}$", options: .regularExpression) != nil else { throw WatchAPIError.pairingCodeRequired }
+        return (base, ["pairingCode": code])
     }
 
-    private func multipartBody(audioURL: URL, pairingCode: String, boundary: String) throws -> Data {
+    private func multipartBody(audioURL: URL, credential: [String: String], boundary: String) throws -> Data {
         var body = Data()
         func append(_ value: String) { body.append(value.data(using: .utf8)!) }
         append("--\(boundary)\r\n")
-        append("Content-Disposition: form-data; name=\"pairingCode\"\r\n\r\n")
-        append("\(pairingCode)\r\n")
+        for (name, value) in credential {
+            append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
+            append("\(value)\r\n")
+        }
         append("--\(boundary)\r\n")
         append("Content-Disposition: form-data; name=\"audio\"; filename=\"watch-turn.m4a\"\r\n")
         append("Content-Type: audio/mp4\r\n\r\n")
