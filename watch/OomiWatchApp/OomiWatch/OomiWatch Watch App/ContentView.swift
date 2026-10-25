@@ -211,6 +211,9 @@ private struct WatchSettings: View {
             }
             Button("Enregistrer la connexion") {
                 serverURL = defaultOomiServerURL
+                // A fresh parent code is an explicit reconnection request. It must replace
+                // any credential left by an earlier, revoked pairing.
+                WatchCredentialStore.clear()
                 pairingCode = draftPairingCode.filter(\.isNumber)
                 dismiss()
                 Task { await refreshMascot() }
