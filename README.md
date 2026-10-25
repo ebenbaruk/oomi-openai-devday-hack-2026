@@ -9,6 +9,8 @@ Oomi is a tiny AI explorer worn as a necklace by kids aged 6 to 10. The child ho
 
 The product spec lives in [`doc/SPEC.md`](doc/SPEC.md).
 
+For the parent dashboard, Apple Watch and TestFlight implementation record, see [`doc/IMPLEMENTATION-STATUS.md`](doc/IMPLEMENTATION-STATUS.md).
+
 ## What's in the app
 
 | Route | What it is |
