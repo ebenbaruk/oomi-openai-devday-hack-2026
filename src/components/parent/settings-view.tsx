@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
 import { paletteOf } from "@/components/mascot/colors";
 import { MascotArt } from "@/components/mascot/mascot-art";
 import { SPECIES } from "@/components/mascot/species";
@@ -28,13 +28,117 @@ export function SettingsView({
       <MascotCard journal={journal} onOpen={onOpenStudio} />
       {/* On a phone the safety report comes before the erase card; on a laptop they sit side by side. */}
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-        <SettingsForm initial={journal.settings} onSaved={onSaved} />
+        <div className="space-y-8">
+          <SettingsForm initial={journal.settings} onSaved={onSaved} />
+          <WatchPairingCard />
+        </div>
         <div className="space-y-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <SafetyReport journal={journal} />
           <DailyNote journal={journal} />
         </div>
         <EraseCard onEraseAll={onEraseAll} />
       </div>
+    </div>
+  );
+}
+
+// ---------- Apple Watch ----------
+
+type Pairing = { pairingCode: string; expiresAt: string };
+type WatchConnection = { paired: boolean; pairedAt: string | null; lastSeenAt: string | null };
+
+/** A short-lived code starts a secure Watch pairing without exposing the adult access code. */
+function WatchPairingCard() {
+  const [pairing, setPairing] = useState<Pairing | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+  const [connection, setConnection] = useState<WatchConnection | null>(null);
+
+  useEffect(() => {
+    fetch("/api/watch/pair", { cache: "no-store" })
+      .then(async (response) => response.ok ? response.json() as Promise<WatchConnection> : null)
+      .then(setConnection)
+      .catch(() => undefined);
+  }, []);
+
+  const prepare = async () => {
+    setState("loading");
+    try {
+      const response = await fetch("/api/watch/pair", { method: "POST" });
+      if (!response.ok) throw new Error("pairing_failed");
+      setPairing(await response.json() as Pairing);
+      setConnection({ paired: false, pairedAt: null, lastSeenAt: null });
+      setState("idle");
+    } catch {
+      setState("error");
+    }
+  };
+
+  return (
+    <section className="rounded-[2rem] bg-navy-900 p-5 text-cream-50 shadow-card sm:p-7" aria-labelledby="watch-pairing-title">
+      <div className="flex items-start gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/12 text-xl" aria-hidden>⌚</span>
+        <div>
+          <p className="text-xs font-extrabold tracking-[0.14em] text-mint-200 uppercase">Apple Watch</p>
+          <h2 id="watch-pairing-title" className="mt-1 font-display text-xl font-semibold">Connect Oomi</h2>
+          <p className="mt-1 text-sm leading-relaxed text-cream-100/75">Your Watch stays connected after its first setup. The Oomi server is already configured.</p>
+        </div>
+      </div>
+
+      {pairing ? (
+        <div className="mt-5 rounded-2xl bg-white/10 p-4">
+          <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Code for this Watch</p>
+          <p className="mt-1 font-mono text-4xl font-bold tracking-[0.24em] text-white">{pairing.pairingCode}</p>
+          <p className="mt-3 text-xs leading-relaxed text-cream-100/75">On the Watch: open ⚙, enter this code, then tap <strong className="font-semibold text-white">Enregistrer la connexion</strong>. It stays securely connected afterwards. This code expires in 15 minutes.</p>
+        </div>
+      ) : connection?.paired ? (
+        <div className="mt-5 rounded-2xl bg-mint-300/15 p-4">
+          <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Watch connected</p>
+          <p className="mt-1 text-sm font-semibold text-white">This Apple Watch is connected to Oomi.</p>
+          <p className="mt-2 text-xs leading-relaxed text-cream-100/75">No code is needed again. Create one only if you intentionally reconnect this Watch.</p>
+        </div>
+      ) : (
+        <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-5 rounded-full bg-mint-300 px-5 py-2.5 font-bold text-navy-950 transition hover:bg-mint-200 disabled:opacity-60">
+          {state === "loading" ? "Creating code…" : "Prepare my Apple Watch"}
+        </button>
+      )}
+      {(pairing || connection?.paired) && <button type="button" onClick={prepare} disabled={state === "loading"} className="mt-4 text-sm font-bold text-mint-200 underline underline-offset-4 disabled:opacity-60">Reconnect this Watch</button>}
+      {connection && <WatchConnectionDiagnostic connection={connection} />}
+      {state === "error" && <p role="alert" className="mt-3 text-sm font-semibold text-coral-200">Couldn&apos;t create a code. Please try again.</p>}
+    </section>
+  );
+}
+
+function WatchConnectionDiagnostic({ connection }: { connection: WatchConnection }) {
+  const lastSeen = connection.lastSeenAt ? new Date(connection.lastSeenAt) : null;
+  const validLastSeen = Boolean(lastSeen && !Number.isNaN(lastSeen.valueOf()));
+  const lastSeenLabel = validLastSeen
+    ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(lastSeen!)
+    : null;
+  const minutesAway = validLastSeen ? Math.max(0, Math.round((Date.now() - lastSeen!.valueOf()) / 60_000)) : null;
+  const current = minutesAway !== null && minutesAway <= 2;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-white/10 bg-black/15 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold tracking-[0.12em] text-mint-200 uppercase">Diagnostic de connexion</p>
+        <span className={`rounded-full px-2.5 py-1 text-[0.7rem] font-extrabold ${current ? "bg-mint-300/20 text-mint-100" : "bg-white/10 text-cream-100/80"}`}>
+          {current ? "En ligne" : connection.paired ? "En attente" : "Non associée"}
+        </span>
+      </div>
+      {connection.paired ? (
+        <>
+          <p className="mt-2 text-sm font-semibold text-white">
+            {lastSeenLabel ? `Dernier contact sécurisé : ${lastSeenLabel}` : "La montre est associée, mais n’a pas encore contacté Oomi."}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-cream-100/75">
+            {current
+              ? "La montre échange bien avec Oomi. Les réglages du Studio se mettent à jour pendant que l’app est ouverte."
+              : "Si la montre ne répond pas : ouvrez Oomi, vérifiez le Wi‑Fi ou la connexion de l’iPhone, puis relâchez une courte question. Si aucun contact n’apparaît, créez un nouveau code et reconnectez la montre."}
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 text-xs leading-relaxed text-cream-100/75">Préparez un code puis saisissez-le dans Oomi sur la montre. Le dashboard n’enregistre jamais l’audio ni la conversation.</p>
+      )}
     </div>
   );
 }

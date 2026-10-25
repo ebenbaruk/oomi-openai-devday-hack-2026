@@ -131,3 +131,16 @@ CREATE TABLE IF NOT EXISTS oomi_app.mascot_portrait (
   config jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- v4: Apple Watch pairing. Only the hash of the short-lived pairing code is kept.
+CREATE TABLE IF NOT EXISTS oomi_app.watch_device (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  child_id uuid NOT NULL REFERENCES oomi_app.child(id) ON DELETE CASCADE,
+  name text NOT NULL DEFAULT 'Apple Watch',
+  pairing_code_hash text NOT NULL,
+  pairing_expires_at timestamptz NOT NULL,
+  paired_at timestamptz,
+  last_seen_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (child_id, name)
+);
