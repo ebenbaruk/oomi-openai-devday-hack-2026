@@ -1,5 +1,7 @@
 # Oomi Watch companion
 
+**[Watch the demo on a real Apple Watch](https://youtu.be/RxY0-MLNtFk)**
+
 ## Chosen stack
 
 - **UI:** native SwiftUI for watchOS.
